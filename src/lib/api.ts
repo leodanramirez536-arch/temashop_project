@@ -303,6 +303,8 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
 };
 
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  paypal: 'PayPal / Tarjeta',
-  cash_on_delivery: 'Contra entrega',
+  paypal: 'Tarjeta / PayPal',
+  cash_on_delivery: 'Efectivo contra entrega',
+  zelle: 'Zelle',
+  cashapp: 'Cash App',
 };
