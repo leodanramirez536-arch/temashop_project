@@ -21,9 +21,7 @@ import {
   getStoredOrders,
   getStoredWishlist,
   saveStoredWishlist,
-  toggleProductInWishlist,
-  DEFAULT_ADMIN,
-  DEFAULT_ADMIN_PASSWORD
+  toggleProductInWishlist
 } from './utils/storage';
 import { 
   ShoppingBag, 
@@ -303,44 +301,6 @@ export default function App() {
             if (el) el.scrollIntoView({ behavior: 'smooth' });
           }}
         />
-
-        {/* Admin Credential Banner (Estética Departamental Premium) */}
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 -mt-1 mb-2">
-          <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950 border border-blue-800/90 p-3 sm:p-3.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white shadow-md">
-            <div className="flex items-center gap-2.5">
-              <span className="bg-amber-500 text-blue-950 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0 flex items-center gap-1 shadow-xs">
-                <Crown className="w-3 h-3 text-blue-950" />
-                ADMIN OFICIAL
-              </span>
-              <div className="text-left text-blue-100">
-                {currentUser?.role === 'admin' ? (
-                  <span className="text-emerald-400 font-bold flex items-center gap-1">
-                    ✓ Has iniciado sesión como Administrador Oficial ({currentUser.email}).
-                  </span>
-                ) : (
-                  <span>
-                    Credenciales de Administrador: <code className="bg-blue-900 px-2 py-0.5 rounded-md border border-blue-700 font-bold text-amber-400">{DEFAULT_ADMIN.email}</code> | Contraseña: <code className="bg-blue-900 px-2 py-0.5 rounded-md border border-blue-700 font-bold text-amber-400">{DEFAULT_ADMIN_PASSWORD}</code>
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <button
-              id="admin-banner-quick-button"
-              onClick={() => {
-                if (currentUser?.role === 'admin') {
-                  setIsAdminOpen(true);
-                } else {
-                  setIsAuthOpen(true);
-                }
-              }}
-              className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-blue-950 font-black text-xs px-4 py-2 rounded-xl shadow-sm transition-all whitespace-nowrap active:scale-95 flex items-center justify-center gap-1.5"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>{currentUser?.role === 'admin' ? 'Abrir Panel de Administración' : 'Iniciar como Administrador'}</span>
-            </button>
-          </div>
-        </div>
 
         {/* Catalog Categories Navigation */}
         <div id="catalog-section">
