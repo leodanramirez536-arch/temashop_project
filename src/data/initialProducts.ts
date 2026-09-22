@@ -84,7 +84,7 @@ export const initialProducts: Product[] = [
     price: 12.99,
     originalPrice: 29.99,
     stock: 120,
-    imageUrl: img('photo-1608248597359-0524458f4a13'),
+    imageUrl: img('photo-1620916566398-39f1143ab7be'),
     rating: 4.7,
     reviewsCount: 1780,
     salesCount: 6400,
