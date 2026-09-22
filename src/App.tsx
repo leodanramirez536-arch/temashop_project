@@ -1,347 +1,700 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Zap, Truck, ShieldCheck, RotateCcw } from 'lucide-react';
-import { Product, CartItem, User, Order } from './types';
-import {
-  getProducts,
-  getOrders,
-  placeOrder,
-  getCart,
-  saveCart,
-  getWishlist,
-  saveWishlist,
-  userFromSession,
-  logoutUser,
-  PlaceOrderInput,
-} from './utils/storage';
-import { supabase } from './lib/supabase';
+import { useState, useEffect, useMemo } from 'react';
 import { Navbar } from './components/Navbar';
+import { FlashDealBanner } from './components/FlashDealBanner';
+import { CategoryPills } from './components/CategoryPills';
 import { ProductCard } from './components/ProductCard';
+import { ProductDetailModal } from './components/ProductDetailModal';
 import { CartDrawer } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
-import { ProductDetailModal } from './components/ProductDetailModal';
-import { WishlistModal } from './components/WishlistModal';
-import { OrdersModal } from './components/OrdersModal';
-import { AuthModal } from './components/AuthModal';
 import { AdminPanel } from './components/AdminPanel';
-
-const appName = 'TemaShop';
+import { AuthModal } from './components/AuthModal';
+import { OrdersModal } from './components/OrdersModal';
+import { WishlistModal } from './components/WishlistModal';
+import { Footer } from './components/Footer';
+import { Product, CartItem, User, Order } from './types';
+import { 
+  getStoredProducts, 
+  getCurrentUser, 
+  logoutUser, 
+  getStoredCart, 
+  saveStoredCart, 
+  getStoredOrders,
+  getStoredWishlist,
+  saveStoredWishlist,
+  toggleProductInWishlist,
+  DEFAULT_ADMIN,
+  DEFAULT_ADMIN_PASSWORD
+} from './utils/storage';
+import { 
+  ShoppingBag, 
+  Zap, 
+  ShieldCheck, 
+  Home, 
+  LayoutDashboard, 
+  Package, 
+  SlidersHorizontal,
+  Crown,
+  Heart
+} from 'lucide-react';
 
 export default function App() {
+  // Application Data States
   const [products, setProducts] = useState<Product[]>([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
-  const [loadError, setLoadError] = useState('');
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [cart, setCart] = useState<CartItem[]>(() => getCart());
-  const [wishlist, setWishlist] = useState<string[]>(() => getWishlist());
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [wishlist, setWishlist] = useState<string[]>([]);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [category, setCategory] = useState('Todas');
-  const [onlyFlash, setOnlyFlash] = useState(false);
+  // Filtering & Sorting
+  const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('featured');
 
-  const [cartOpen, setCartOpen] = useState(false);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [wishlistOpen, setWishlistOpen] = useState(false);
-  const [ordersOpen, setOrdersOpen] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [detailProduct, setDetailProduct] = useState<Product | null>(null);
-  const [toast, setToast] = useState('');
+  // Modals & Drawers States
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isOrdersOpen, setIsOrdersOpen] = useState(false);
+  const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
+  const [checkoutDiscountRate, setCheckoutDiscountRate] = useState<number>(0);
 
-  useEffect(() => saveCart(cart), [cart]);
-  useEffect(() => saveWishlist(wishlist), [wishlist]);
+  // Toast Notification
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const loadProducts = async () => {
-    try {
-      setLoadError('');
-      setProducts(await getProducts());
-    } catch (err) {
-      setLoadError((err as Error).message);
-    } finally {
-      setLoadingProducts(false);
+  // Initialize data from localStorage on mount
+  useEffect(() => {
+    const loadedProducts = getStoredProducts();
+    const loadedUser = getCurrentUser();
+    const loadedCart = getStoredCart();
+    const loadedOrders = getStoredOrders();
+    const loadedWishlist = getStoredWishlist();
+
+    setProducts(loadedProducts);
+    setCurrentUser(loadedUser);
+    setCart(loadedCart);
+    setOrders(loadedOrders);
+    setWishlist(loadedWishlist);
+  }, []);
+
+  // Save cart whenever it changes
+  const updateCartState = (newCart: CartItem[]) => {
+    setCart(newCart);
+    saveStoredCart(newCart);
+  };
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 2800);
+  };
+
+  // Cart Operations
+  const handleAddToCart = (product: Product, quantity: number = 1) => {
+    const existingIndex = cart.findIndex((item) => item.product.id === product.id);
+    let updatedCart: CartItem[];
+
+    if (existingIndex > -1) {
+      updatedCart = [...cart];
+      const newQty = Math.min(product.stock, updatedCart[existingIndex].quantity + quantity);
+      updatedCart[existingIndex] = {
+        ...updatedCart[existingIndex],
+        quantity: newQty,
+      };
+    } else {
+      updatedCart = [...cart, { product, quantity: Math.min(product.stock, quantity) }];
+    }
+
+    updateCartState(updatedCart);
+    showToast(`✓ "${product.title.slice(0, 25)}..." añadido a tu bolsa`);
+  };
+
+  const handleUpdateCartQuantity = (productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      handleRemoveCartItem(productId);
+      return;
+    }
+
+    const updated = cart.map((item) => {
+      if (item.product.id === productId) {
+        return { ...item, quantity: Math.min(item.product.stock, quantity) };
+      }
+      return item;
+    });
+    updateCartState(updated);
+  };
+
+  const handleRemoveCartItem = (productId: string) => {
+    const updated = cart.filter((item) => item.product.id !== productId);
+    updateCartState(updated);
+    showToast('Artículo retirado de la bolsa');
+  };
+
+  const handleClearCart = () => {
+    updateCartState([]);
+  };
+
+  // "Comprar Ahora" quick action
+  const handleBuyNow = (product: Product, quantity: number = 1) => {
+    handleAddToCart(product, quantity);
+    setSelectedProductForDetail(null);
+    setCheckoutDiscountRate(0);
+    setIsCheckoutOpen(true);
+  };
+
+  // Proceed to checkout from cart drawer
+  const handleProceedToCheckout = (discountRate: number) => {
+    setCheckoutDiscountRate(discountRate);
+    setIsCartOpen(false);
+    setIsCheckoutOpen(true);
+  };
+
+  // Order placed callback
+  const handleOrderSuccess = (newOrder: Order) => {
+    setOrders((prev) => [newOrder, ...prev]);
+    handleClearCart();
+    showToast(`¡Orden ${newOrder.orderNumber} confirmada con éxito!`);
+  };
+
+  // Auth Operations
+  const handleLoginSuccess = (user: User) => {
+    setCurrentUser(user);
+    showToast(`Bienvenido: ${user.name}`);
+  };
+
+  const handleLogout = () => {
+    logoutUser();
+    setCurrentUser(null);
+    showToast('Has cerrado sesión correctamente');
+  };
+
+  // Admin products update
+  const handleProductsUpdated = (updatedProducts: Product[]) => {
+    setProducts(updatedProducts);
+  };
+
+  // Wishlist Operations
+  const handleToggleWishlist = (product: Product) => {
+    const isCurrentlyWishlisted = wishlist.includes(product.id);
+    const updated = toggleProductInWishlist(product.id);
+    setWishlist(updated);
+    if (isCurrentlyWishlisted) {
+      showToast('Eliminado de tu lista de favoritos');
+    } else {
+      showToast(`❤️ Guardado en Favoritos: ${product.title}`);
     }
   };
 
-  // cargar catálogo y sesión
-  useEffect(() => {
-    loadProducts();
-    supabase.auth.getSession().then(({ data }) => setCurrentUser(userFromSession(data.session)));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setCurrentUser(userFromSession(session));
+  const handleClearWishlist = () => {
+    saveStoredWishlist([]);
+    setWishlist([]);
+    showToast('Lista de favoritos vaciada');
+  };
+
+  const handleAddAllWishlistToCart = (productsToAdd: Product[]) => {
+    productsToAdd.forEach((p) => {
+      handleAddToCart(p, 1);
     });
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
-  // pedidos: el admin ve todos, el cliente solo los suyos (lo controla la base de datos)
-  useEffect(() => {
-    if (currentUser) getOrders().then(setOrders);
-    else setOrders([]);
-  }, [currentUser?.id]);
-
-  // mantener el carrito sincronizado con el catálogo (precio/stock/eliminados)
-  useEffect(() => {
-    if (loadingProducts || loadError) return;
-    setCart((prev) =>
-      prev
-        .map((i) => {
-          const p = products.find((x) => x.id === i.product.id);
-          return p ? { product: p, quantity: Math.min(i.quantity, Math.max(p.stock, 0)) } : null;
-        })
-        .filter((i): i is CartItem => !!i && i.quantity > 0)
-    );
-  }, [products, loadingProducts, loadError]);
-
-  const showToast = (msg: string) => {
-    setToast(msg);
-    window.setTimeout(() => setToast(''), 2200);
+    showToast(`¡${productsToAdd.length} artículos añadidos a la Bolsa!`);
   };
 
-  const categories = useMemo(() => ['Todas', ...Array.from(new Set(products.map((p) => p.category)))], [products]);
+  // Filtered & Sorted Products List
+  const filteredProducts = useMemo(() => {
+    let result = [...products];
 
-  const visibleProducts = products.filter((p) => {
-    const q = searchQuery.trim().toLowerCase();
-    const matchesQ = !q || p.title.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.description.toLowerCase().includes(q);
-    const matchesCat = category === 'Todas' || p.category === category;
-    return matchesQ && matchesCat && (!onlyFlash || p.isFlashDeal);
-  });
+    // Filter by category
+    if (selectedCategory === 'Ofertas Flash') {
+      result = result.filter((p) => p.isFlashDeal);
+    } else if (selectedCategory !== 'Todas') {
+      result = result.filter((p) => p.category.toLowerCase() === selectedCategory.toLowerCase());
+    }
 
-  const flashDeals = products.filter((p) => p.isFlashDeal && p.stock > 0).slice(0, 4);
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q)
+      );
+    }
 
-  const addToCart = (product: Product) => {
-    setCart((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id);
-      if (existing) {
-        if (existing.quantity >= product.stock) return prev;
-        return prev.map((i) => (i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i));
-      }
-      return [...prev, { product, quantity: 1 }];
-    });
-    showToast(`"${product.title}" agregado al carrito`);
-  };
+    // Sorting
+    switch (sortBy) {
+      case 'price_low':
+        result.sort((a, b) => a.price - b.price);
+        break;
+      case 'price_high':
+        result.sort((a, b) => b.price - a.price);
+        break;
+      case 'discount':
+        result.sort((a, b) => {
+          const discA = (a.originalPrice - a.price) / a.originalPrice;
+          const discB = (b.originalPrice - b.price) / b.originalPrice;
+          return discB - discA;
+        });
+        break;
+      case 'sales':
+        result.sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0));
+        break;
+      case 'rating':
+        result.sort((a, b) => b.rating - a.rating);
+        break;
+      default:
+        // Featured
+        break;
+    }
 
-  const updateQuantity = (productId: string, quantity: number) => {
-    setCart((prev) =>
-      quantity <= 0
-        ? prev.filter((i) => i.product.id !== productId)
-        : prev.map((i) => (i.product.id === productId ? { ...i, quantity: Math.min(quantity, i.product.stock) } : i))
-    );
-  };
+    return result;
+  }, [products, selectedCategory, searchQuery, sortBy]);
 
-  const toggleWishlist = (productId: string) => {
-    setWishlist((prev) => (prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]));
-  };
+  const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handlePlaceOrder = async (input: PlaceOrderInput): Promise<Order> => {
-    const order = await placeOrder(input);
-    setCart([]);
-    loadProducts();
-    if (currentUser) getOrders().then(setOrders);
-    return order;
-  };
-
-  const userOrders = orders;
-
-  const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
+  // Active section for Mobile Bottom Nav
+  const activeMobileTab = useMemo(() => {
+    if (isCartOpen) return 'cart';
+    if (isOrdersOpen) return 'orders';
+    if (isWishlistOpen) return 'wishlist';
+    if (isAdminOpen) return 'admin';
+    if (selectedCategory !== 'Todas') return 'filters';
+    return 'home';
+  }, [isCartOpen, isOrdersOpen, isWishlistOpen, isAdminOpen, selectedCategory]);
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-blue-900 selection:text-amber-400 pb-16 sm:pb-0">
+      
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 bg-blue-950 text-white text-xs sm:text-sm font-semibold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-blue-800 animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Top Navbar (Azul Profundo con detalles Dorados) */}
       <Navbar
         currentUser={currentUser}
-        cartCount={cartCount}
-        wishlistCount={wishlist.length}
+        cart={cart}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onOpenCart={() => setCartOpen(true)}
-        onOpenWishlist={() => setWishlistOpen(true)}
-        onOpenOrders={() => setOrdersOpen(true)}
-        onOpenAuth={() => setAuthOpen(true)}
-        onOpenAdmin={() => setAdminOpen(true)}
-        onLogout={async () => {
-          await logoutUser();
-          setCurrentUser(null);
-          setAdminOpen(false);
-          showToast('Sesión cerrada');
+        onOpenCart={() => setIsCartOpen(true)}
+        onOpenWishlist={() => setIsWishlistOpen(true)}
+        wishlistCount={wishlist.length}
+        onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenAdmin={() => setIsAdminOpen(true)}
+        onOpenOrders={() => setIsOrdersOpen(true)}
+        onLogout={handleLogout}
+        onSelectCategory={(cat) => {
+          setSelectedCategory(cat);
+          const el = document.getElementById('catalog-section');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
         }}
       />
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 py-5 space-y-6">
-        {/* Hero */}
-        <section className="rounded-3xl bg-gradient-to-r from-amber-400 via-orange-400 to-rose-500 p-6 sm:p-10 text-blue-950 relative overflow-hidden">
-          <div className="max-w-xl space-y-3 relative">
-            <span className="inline-flex items-center gap-1 bg-blue-950 text-amber-400 text-xs font-black px-3 py-1 rounded-full">
-              <Zap className="w-3.5 h-3.5" /> OFERTAS FLASH DE HOY
-            </span>
-            <h1 className="text-3xl sm:text-5xl font-black leading-tight">Hasta 70% de descuento en {appName}</h1>
-            <p className="text-sm sm:text-base font-semibold text-blue-950/80">
-              Tecnología, hogar, moda y más. Envío gratis desde $35.
-            </p>
-            <button
-              onClick={() => {
-                setOnlyFlash(true);
-                document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="bg-blue-950 hover:bg-blue-900 text-amber-400 font-black px-6 py-3 rounded-full shadow-lg"
-            >
-              Ver ofertas
-            </button>
-          </div>
-          <span className="absolute -right-6 -bottom-10 text-[10rem] sm:text-[14rem] opacity-20 select-none">🛍️</span>
-        </section>
+      <main className="flex-1">
+        {/* Flash Deals Hero Banner */}
+        <FlashDealBanner
+          onExploreDeals={() => {
+            setSelectedCategory('Ofertas Flash');
+            const el = document.getElementById('catalog-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
 
-        {/* Beneficios */}
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          {[
-            { icon: <Truck className="w-5 h-5 text-blue-900" />, t: 'Envío gratis', d: 'En pedidos desde $35' },
-            { icon: <ShieldCheck className="w-5 h-5 text-emerald-600" />, t: 'Compra segura', d: 'Protección en cada pedido' },
-            { icon: <RotateCcw className="w-5 h-5 text-amber-600" />, t: 'Devoluciones', d: 'Hasta 30 días' },
-          ].map((b) => (
-            <div key={b.t} className="bg-white rounded-2xl border border-slate-200 p-3.5 flex items-center gap-3">
-              {b.icon}
-              <div>
-                <strong className="block text-slate-900">{b.t}</strong>
-                <span className="text-slate-500">{b.d}</span>
+        {/* Admin Credential Banner (Estética Departamental Premium) */}
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 -mt-1 mb-2">
+          <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950 border border-blue-800/90 p-3 sm:p-3.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white shadow-md">
+            <div className="flex items-center gap-2.5">
+              <span className="bg-amber-500 text-blue-950 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0 flex items-center gap-1 shadow-xs">
+                <Crown className="w-3 h-3 text-blue-950" />
+                ADMIN OFICIAL
+              </span>
+              <div className="text-left text-blue-100">
+                {currentUser?.role === 'admin' ? (
+                  <span className="text-emerald-400 font-bold flex items-center gap-1">
+                    ✓ Has iniciado sesión como Administrador Oficial ({currentUser.email}).
+                  </span>
+                ) : (
+                  <span>
+                    Credenciales de Administrador: <code className="bg-blue-900 px-2 py-0.5 rounded-md border border-blue-700 font-bold text-amber-400">{DEFAULT_ADMIN.email}</code> | Contraseña: <code className="bg-blue-900 px-2 py-0.5 rounded-md border border-blue-700 font-bold text-amber-400">{DEFAULT_ADMIN_PASSWORD}</code>
+                  </span>
+                )}
               </div>
             </div>
-          ))}
-        </section>
 
-        {/* Flash deals */}
-        {flashDeals.length > 0 && (
-          <section className="bg-blue-950 rounded-3xl p-4 sm:p-5">
-            <h2 className="text-amber-400 font-black text-lg flex items-center gap-2 mb-3">
-              <Zap className="w-5 h-5" /> Ofertas relámpago
-            </h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {flashDeals.map((p) => (
-                <ProductCard
-                  key={p.id}
-                  product={p}
-                  isWishlisted={wishlist.includes(p.id)}
-                  onAddToCart={addToCart}
-                  onToggleWishlist={toggleWishlist}
-                  onOpenDetail={setDetailProduct}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Catálogo */}
-        <section id="catalogo" className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            {categories.map((c) => (
-              <button
-                key={c}
-                onClick={() => setCategory(c)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                  category === c ? 'bg-blue-900 text-amber-400 border-blue-900' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-            <label className="ml-auto flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer">
-              <input type="checkbox" checked={onlyFlash} onChange={(e) => setOnlyFlash(e.target.checked)} />
-              Solo ofertas flash
-            </label>
+            <button
+              id="admin-banner-quick-button"
+              onClick={() => {
+                if (currentUser?.role === 'admin') {
+                  setIsAdminOpen(true);
+                } else {
+                  setIsAuthOpen(true);
+                }
+              }}
+              className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-blue-950 font-black text-xs px-4 py-2 rounded-xl shadow-sm transition-all whitespace-nowrap active:scale-95 flex items-center justify-center gap-1.5"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>{currentUser?.role === 'admin' ? 'Abrir Panel de Administración' : 'Iniciar como Administrador'}</span>
+            </button>
           </div>
+        </div>
 
-          {loadingProducts ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-sm text-slate-500">
-              Cargando productos...
-            </div>
-          ) : loadError ? (
-            <div className="bg-white rounded-2xl border border-rose-200 p-10 text-center text-sm text-rose-600 space-y-3">
-              <p>No se pudieron cargar los productos. Revisa tu conexión.</p>
-              <button onClick={loadProducts} className="bg-blue-900 text-amber-400 font-bold px-4 py-2 rounded-xl">
-                Reintentar
+        {/* Catalog Categories Navigation */}
+        <div id="catalog-section">
+          <CategoryPills
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            totalProductsCount={filteredProducts.length}
+          />
+        </div>
+
+        {/* Products Grid: Fully Responsive */}
+        <section className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6">
+          {filteredProducts.length === 0 ? (
+            <div className="bg-white rounded-3xl p-8 sm:p-12 text-center border border-gray-200 shadow-xs max-w-lg mx-auto space-y-4">
+              <div className="w-16 h-16 rounded-full bg-blue-50 text-blue-900 flex items-center justify-center mx-auto">
+                <ShoppingBag className="w-8 h-8" />
+              </div>
+              <h3 className="text-base sm:text-lg font-bold text-gray-900">
+                No se encontraron productos
+              </h3>
+              <p className="text-xs text-gray-500">
+                No hay artículos que coincidan con "{searchQuery}" en la categoría "{selectedCategory}".
+              </p>
+              <button
+                id="reset-filter-button"
+                onClick={() => {
+                  setSelectedCategory('Todas');
+                  setSearchQuery('');
+                }}
+                className="bg-blue-900 hover:bg-blue-800 text-amber-400 font-bold text-xs py-2.5 px-6 rounded-xl transition-all shadow-sm"
+              >
+                Ver todos los productos
               </button>
-            </div>
-          ) : visibleProducts.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-sm text-slate-500">
-              No encontramos productos con esos filtros.
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-              {visibleProducts.map((p) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-4 lg:gap-5">
+              {filteredProducts.map((product) => (
                 <ProductCard
-                  key={p.id}
-                  product={p}
-                  isWishlisted={wishlist.includes(p.id)}
-                  onAddToCart={addToCart}
-                  onToggleWishlist={toggleWishlist}
-                  onOpenDetail={setDetailProduct}
+                  key={product.id}
+                  product={product}
+                  onAddToCart={(p) => handleAddToCart(p, 1)}
+                  onOpenQuickView={(p) => setSelectedProductForDetail(p)}
+                  isWishlisted={wishlist.includes(product.id)}
+                  onToggleWishlist={handleToggleWishlist}
                 />
               ))}
             </div>
           )}
         </section>
+
+        {/* Department Store Guarantees Section */}
+        <section className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
+          <div className="bg-white border border-gray-200/80 rounded-3xl p-5 sm:p-8 shadow-xs grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="flex items-start gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0 border border-amber-200">
+                <Zap className="w-5 h-5 fill-current" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-blue-950">Precios Directos y Colecciones</h4>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                  Conectamos con fabricantes selectos para ofrecer artículos exclusivos con descuentos de hasta el 70%.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-900 flex items-center justify-center flex-shrink-0 border border-blue-200">
+                <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-blue-950">Garantía TemaShop Elite</h4>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                  Garantía total de reembolso durante 90 días con devolución asistida y servicio de atención prioritaria.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-slate-100 text-blue-950 flex items-center justify-center flex-shrink-0 border border-slate-200">
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-blue-950">Mercancía por Categorías</h4>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                  Administración integral de stock organizada en tiempo real con persistencia en almacenamiento local.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
       </main>
 
-      <footer className="bg-blue-950 text-slate-300 text-xs text-center py-6 mt-8">
-        © {new Date().getFullYear()} {appName}. Todos los derechos reservados.
-      </footer>
-
-      {toast && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[70] bg-blue-950 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-xl">
-          {toast}
-        </div>
-      )}
-
-      <CartDrawer
-        isOpen={cartOpen}
-        onClose={() => setCartOpen(false)}
-        items={cart}
-        onUpdateQuantity={updateQuantity}
-        onRemove={(id) => updateQuantity(id, 0)}
-        onCheckout={() => {
-          setCartOpen(false);
-          setCheckoutOpen(true);
+      {/* Footer */}
+      <Footer
+        onOpenAdmin={() => setIsAdminOpen(true)}
+        onSelectCategory={(cat) => {
+          setSelectedCategory(cat);
+          const el = document.getElementById('catalog-section');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
         }}
       />
-      {checkoutOpen && (
-        <CheckoutModal
-          isOpen={checkoutOpen}
-          onClose={() => setCheckoutOpen(false)}
-          items={cart}
-          currentUser={currentUser}
-          onPlaceOrder={handlePlaceOrder}
-        />
-      )}
-      <ProductDetailModal
-        product={detailProduct}
-        isWishlisted={!!detailProduct && wishlist.includes(detailProduct.id)}
-        onClose={() => setDetailProduct(null)}
-        onAddToCart={addToCart}
-        onToggleWishlist={toggleWishlist}
-      />
-      <WishlistModal
-        isOpen={wishlistOpen}
-        onClose={() => setWishlistOpen(false)}
-        products={products.filter((p) => wishlist.includes(p.id))}
-        onAddToCart={addToCart}
-        onRemove={toggleWishlist}
-      />
-      <OrdersModal isOpen={ordersOpen} onClose={() => setOrdersOpen(false)} orders={userOrders} />
-      {authOpen && (
-        <AuthModal
-          isOpen={authOpen}
-          onClose={() => setAuthOpen(false)}
-          onLoginSuccess={(u) => {
-            setCurrentUser(u);
-            showToast(`Bienvenido, ${u.name}`);
+
+      {/* MOBILE BOTTOM NAVIGATION BAR (Smartphones: Azul Profundo & Acentos Dorados) */}
+      <nav 
+        id="mobile-bottom-nav" 
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200 py-1.5 px-2 flex sm:hidden items-center justify-around shadow-lg"
+      >
+        <button
+          id="mobile-nav-home"
+          onClick={() => {
+            setSelectedCategory('Todas');
+            setIsCartOpen(false);
+            setIsOrdersOpen(false);
+            setIsWishlistOpen(false);
+            setIsAdminOpen(false);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-        />
-      )}
+          className={`flex flex-col items-center justify-center min-w-[50px] py-1 active:scale-95 transition-all ${
+            activeMobileTab === 'home'
+              ? 'text-blue-950 font-black'
+              : 'text-gray-500 hover:text-blue-900 font-semibold'
+          }`}
+        >
+          <Home className={`w-5 h-5 transition-transform duration-200 ${activeMobileTab === 'home' ? 'scale-110 text-blue-950 stroke-[2.5]' : ''}`} />
+          <span className="text-[10px] mt-0.5 leading-none">Inicio</span>
+          <span 
+            className={`w-1.5 h-1.5 rounded-full mt-1 transition-all duration-300 ${
+              activeMobileTab === 'home'
+                ? 'bg-amber-500 scale-100 opacity-100 shadow-xs'
+                : 'bg-transparent scale-0 opacity-0'
+            }`}
+            aria-hidden="true"
+          />
+        </button>
+
+        <button
+          id="mobile-nav-filters"
+          onClick={() => {
+            setIsCartOpen(false);
+            setIsOrdersOpen(false);
+            setIsWishlistOpen(false);
+            setIsAdminOpen(false);
+            const el = document.getElementById('catalog-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }}
+          className={`flex flex-col items-center justify-center min-w-[50px] py-1 active:scale-95 transition-all ${
+            activeMobileTab === 'filters'
+              ? 'text-blue-950 font-black'
+              : 'text-gray-500 hover:text-blue-900 font-semibold'
+          }`}
+        >
+          <SlidersHorizontal className={`w-5 h-5 transition-transform duration-200 ${activeMobileTab === 'filters' ? 'scale-110 text-blue-950 stroke-[2.5]' : ''}`} />
+          <span className="text-[10px] mt-0.5 leading-none">Filtros</span>
+          <span 
+            className={`w-1.5 h-1.5 rounded-full mt-1 transition-all duration-300 ${
+              activeMobileTab === 'filters'
+                ? 'bg-amber-500 scale-100 opacity-100 shadow-xs'
+                : 'bg-transparent scale-0 opacity-0'
+            }`}
+            aria-hidden="true"
+          />
+        </button>
+
+        {/* Wishlist Button in Mobile Bottom Nav */}
+        <button
+          id="mobile-nav-wishlist"
+          onClick={() => setIsWishlistOpen(true)}
+          className={`flex flex-col items-center justify-center min-w-[50px] py-1 relative active:scale-95 transition-all ${
+            activeMobileTab === 'wishlist'
+              ? 'text-rose-600 font-black'
+              : 'text-gray-500 hover:text-rose-600 font-semibold'
+          }`}
+        >
+          <div className="relative">
+            <Heart className={`w-5 h-5 transition-transform duration-200 ${
+              wishlist.length > 0 || activeMobileTab === 'wishlist'
+                ? 'text-rose-500 fill-rose-500' 
+                : ''
+            } ${activeMobileTab === 'wishlist' ? 'scale-110' : ''}`} />
+            {wishlist.length > 0 && (
+              <span className="absolute -top-1.5 -right-2 bg-rose-500 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                {wishlist.length > 99 ? '99+' : wishlist.length}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] mt-0.5 leading-none">Deseos</span>
+          <span 
+            className={`w-1.5 h-1.5 rounded-full mt-1 transition-all duration-300 ${
+              activeMobileTab === 'wishlist'
+                ? 'bg-rose-500 scale-100 opacity-100 shadow-xs'
+                : 'bg-transparent scale-0 opacity-0'
+            }`}
+            aria-hidden="true"
+          />
+        </button>
+
+        {/* Admin button in mobile bottom bar */}
+        <button
+          id="mobile-nav-admin"
+          onClick={() => {
+            if (currentUser?.role === 'admin') {
+              setIsAdminOpen(true);
+            } else {
+              setIsAuthOpen(true);
+            }
+          }}
+          className={`flex flex-col items-center justify-center min-w-[50px] py-1 active:scale-95 transition-all ${
+            activeMobileTab === 'admin'
+              ? 'text-amber-500 font-black'
+              : currentUser?.role === 'admin'
+                ? 'text-amber-600 font-bold'
+                : 'text-gray-500 hover:text-blue-900 font-semibold'
+          }`}
+        >
+          <LayoutDashboard className={`w-5 h-5 transition-transform duration-200 ${activeMobileTab === 'admin' ? 'scale-110 text-amber-500 stroke-[2.5]' : ''}`} />
+          <span className="text-[10px] mt-0.5 leading-none">
+            {currentUser?.role === 'admin' ? 'Admin' : 'Admin'}
+          </span>
+          <span 
+            className={`w-1.5 h-1.5 rounded-full mt-1 transition-all duration-300 ${
+              activeMobileTab === 'admin'
+                ? 'bg-amber-500 scale-100 opacity-100 shadow-xs'
+                : 'bg-transparent scale-0 opacity-0'
+            }`}
+            aria-hidden="true"
+          />
+        </button>
+
+        <button
+          id="mobile-nav-orders"
+          onClick={() => setIsOrdersOpen(true)}
+          className={`flex flex-col items-center justify-center min-w-[50px] py-1 active:scale-95 transition-all ${
+            activeMobileTab === 'orders'
+              ? 'text-blue-950 font-black'
+              : 'text-gray-500 hover:text-blue-900 font-semibold'
+          }`}
+        >
+          <Package className={`w-5 h-5 transition-transform duration-200 ${activeMobileTab === 'orders' ? 'scale-110 text-blue-950 stroke-[2.5]' : ''}`} />
+          <span className="text-[10px] mt-0.5 leading-none">Pedidos</span>
+          <span 
+            className={`w-1.5 h-1.5 rounded-full mt-1 transition-all duration-300 ${
+              activeMobileTab === 'orders'
+                ? 'bg-amber-500 scale-100 opacity-100 shadow-xs'
+                : 'bg-transparent scale-0 opacity-0'
+            }`}
+            aria-hidden="true"
+          />
+        </button>
+
+        <button
+          id="mobile-nav-cart"
+          onClick={() => setIsCartOpen(true)}
+          className={`flex flex-col items-center justify-center min-w-[50px] py-1 relative active:scale-95 transition-all ${
+            activeMobileTab === 'cart'
+              ? 'text-blue-950 font-black'
+              : 'text-gray-500 hover:text-blue-900 font-semibold'
+          }`}
+        >
+          <div className="relative">
+            <ShoppingBag className={`w-5 h-5 transition-transform duration-200 ${activeMobileTab === 'cart' ? 'scale-110 text-blue-950 stroke-[2.5]' : ''}`} />
+            {totalCartCount > 0 && (
+              <span className="absolute -top-1.5 -right-2 bg-amber-500 text-blue-950 font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                {totalCartCount > 99 ? '99+' : totalCartCount}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] mt-0.5 leading-none">Bolsa</span>
+          <span 
+            className={`w-1.5 h-1.5 rounded-full mt-1 transition-all duration-300 ${
+              activeMobileTab === 'cart'
+                ? 'bg-amber-500 scale-100 opacity-100 shadow-xs'
+                : 'bg-transparent scale-0 opacity-0'
+            }`}
+            aria-hidden="true"
+          />
+        </button>
+      </nav>
+
+      {/* MODALS & DRAWERS */}
+
+      {/* Wishlist Modal */}
+      <WishlistModal
+        isOpen={isWishlistOpen}
+        onClose={() => setIsWishlistOpen(false)}
+        wishlistIds={wishlist}
+        products={products}
+        onToggleWishlist={handleToggleWishlist}
+        onAddToCart={(p) => handleAddToCart(p, 1)}
+        onAddAllToCart={handleAddAllWishlistToCart}
+        onClearWishlist={handleClearWishlist}
+        onOpenQuickView={(p) => setSelectedProductForDetail(p)}
+      />
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal
+        product={selectedProductForDetail}
+        onClose={() => setSelectedProductForDetail(null)}
+        onAddToCart={(p, qty) => handleAddToCart(p, qty)}
+        onBuyNow={(p, qty) => handleBuyNow(p, qty)}
+        isWishlisted={selectedProductForDetail ? wishlist.includes(selectedProductForDetail.id) : false}
+        onToggleWishlist={handleToggleWishlist}
+      />
+
+      {/* Shopping Cart Drawer */}
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cart={cart}
+        onUpdateQuantity={handleUpdateCartQuantity}
+        onRemoveItem={handleRemoveCartItem}
+        onClearCart={handleClearCart}
+        onProceedToCheckout={handleProceedToCheckout}
+      />
+
+      {/* Checkout Modal */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        cart={cart}
+        currentUser={currentUser}
+        discountRate={checkoutDiscountRate}
+        onOrderSuccess={handleOrderSuccess}
+        onViewOrders={() => setIsOrdersOpen(true)}
+      />
+
+      {/* Admin Panel Modal */}
       <AdminPanel
-        isOpen={adminOpen}
-        onClose={() => setAdminOpen(false)}
+        isOpen={isAdminOpen}
+        onClose={() => setIsAdminOpen(false)}
         currentUser={currentUser}
         products={products}
         orders={orders}
-        onProductsUpdated={setProducts}
-        onOpenAuthForAdmin={() => setAuthOpen(true)}
+        onProductsUpdated={handleProductsUpdated}
+        onOpenAuthForAdmin={() => setIsAuthOpen(true)}
       />
+
+      {/* Local Auth Modal */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
+
+      {/* Orders History Modal */}
+      <OrdersModal
+        isOpen={isOrdersOpen}
+        onClose={() => setIsOrdersOpen(false)}
+        orders={orders}
+        currentUser={currentUser}
+      />
+
     </div>
   );
 }

@@ -28,6 +28,8 @@ import {
   updateProductInStorage, 
   deleteProductFromStorage, 
   resetProductsToDefault,
+  DEFAULT_ADMIN,
+  DEFAULT_ADMIN_PASSWORD
 } from '../utils/storage';
 
 interface AdminPanelProps {
@@ -55,7 +57,7 @@ const PRESET_SAMPLE_IMAGES = [
   { label: 'Zapatillas Air Sport', category: 'Moda y Calzado', url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80' },
   { label: 'Freidora de Aire XL', category: 'Hogar y Cocina', url: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=800&q=80' },
   { label: 'Cafetera Italiana', category: 'Hogar y Cocina', url: 'https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?auto=format&fit=crop&w=800&q=80' },
-  { label: 'Suero Vitamina C', category: 'Belleza y Cuidado', url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Suero Vitamina C', category: 'Belleza y Cuidado', url: 'https://images.unsplash.com/photo-1608248597359-0524458f4a13?auto=format&fit=crop&w=800&q=80' },
   { label: 'Botella Térmica', category: 'Deportes y Aire Libre', url: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=800&q=80' },
   { label: 'Gafas Aviador', category: 'Accesorios', url: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=800&q=80' },
 ];
@@ -102,7 +104,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     : 0;
 
   // Handler for creating a new product
-  const handleCreateProduct = async (e: React.FormEvent) => {
+  const handleCreateProduct = (e: React.FormEvent) => {
     e.preventDefault();
     setNotification(null);
 
@@ -118,9 +120,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
 
-    let newProduct: Product;
-    try {
-    newProduct = await addProductToStorage({
+    const newProduct = addProductToStorage({
       title: title.trim(),
       description: description.trim() || 'Pieza oficial con garantía de calidad y entrega prioritaria en TemaShop.',
       category,
@@ -134,10 +134,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       isFlashDeal,
       badge: badge.trim() || undefined,
     });
-    } catch (err) {
-      setNotification({ message: `No se pudo guardar: ${(err as Error).message}`, type: 'error' });
-      return;
-    }
 
     const updated = [newProduct, ...products];
     onProductsUpdated(updated);
@@ -149,7 +145,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setOriginalPrice('');
     setStock('20');
     setNotification({
-      message: `¡Producto "${newProduct.title}" agregado exitosamente al inventario de ${newProduct.category} y guardado en la base de datos!`,
+      message: `¡Producto "${newProduct.title}" agregado exitosamente al inventario de ${newProduct.category} y sincronizado en localStorage!`,
       type: 'success',
     });
 
@@ -161,7 +157,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // Handler for saving edited product
-  const handleSaveEditProduct = async (e: React.FormEvent) => {
+  const handleSaveEditProduct = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct) return;
 
@@ -170,13 +166,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
 
-    let updatedList: Product[];
-    try {
-      updatedList = await updateProductInStorage(editingProduct);
-    } catch (err) {
-      setNotification({ message: `No se pudo actualizar: ${(err as Error).message}`, type: 'error' });
-      return;
-    }
+    const updatedList = updateProductInStorage(editingProduct);
     onProductsUpdated(updatedList);
     setEditingProduct(null);
     setNotification({
@@ -187,15 +177,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // Handler for deleting a product
-  const handleDeleteProduct = async (productId: string, productTitle: string) => {
+  const handleDeleteProduct = (productId: string, productTitle: string) => {
     if (window.confirm(`¿Estás seguro de que deseas eliminar permanentemente "${productTitle}" del inventario?`)) {
-      let updated: Product[];
-      try {
-        updated = await deleteProductFromStorage(productId);
-      } catch (err) {
-        setNotification({ message: `No se pudo eliminar: ${(err as Error).message}`, type: 'error' });
-        return;
-      }
+      const updated = deleteProductFromStorage(productId);
       onProductsUpdated(updated);
       setNotification({
         message: `Producto "${productTitle}" eliminado correctamente de la tienda.`,
@@ -206,15 +190,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // Handler to reset catalog to defaults
-  const handleResetCatalog = async () => {
+  const handleResetCatalog = () => {
     if (window.confirm('¿Deseas restaurar el catálogo a los productos originales de TemaShop?')) {
-      let defaults: Product[];
-      try {
-        defaults = await resetProductsToDefault();
-      } catch (err) {
-        setNotification({ message: `No se pudo restaurar: ${(err as Error).message}`, type: 'error' });
-        return;
-      }
+      const defaults = resetProductsToDefault();
       onProductsUpdated(defaults);
       setNotification({
         message: 'Catálogo de mercancía restablecido exitosamente.',
@@ -285,7 +263,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-300 font-medium">
-                Sesión de Administrador Oficial
+                Sesión de Administrador: <strong className="text-amber-300">{DEFAULT_ADMIN.email}</strong>
               </p>
             </div>
           </div>
@@ -311,8 +289,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </p>
             <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl max-w-sm mx-auto text-xs text-left space-y-1.5 shadow-xs">
               <div>
-                <strong className="text-slate-600 block text-[10px] uppercase font-bold">✓ Usa tus credenciales de administrador</strong>
-                <span className="text-slate-700">Por favor inicia sesión con tu cuenta de administrador oficial para acceder al panel.</span>
+                <strong className="text-slate-500 block text-[10px] uppercase font-bold">Correo de Administrador:</strong>
+                <span className="font-mono font-bold text-blue-950 text-sm">{DEFAULT_ADMIN.email}</span>
+              </div>
+              <div>
+                <strong className="text-slate-500 block text-[10px] uppercase font-bold">Contraseña:</strong>
+                <span className="font-mono font-bold text-amber-600 text-sm">{DEFAULT_ADMIN_PASSWORD}</span>
               </div>
             </div>
             <button
@@ -627,7 +609,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="p-3.5 bg-blue-50/80 border border-blue-200/80 rounded-2xl flex items-center gap-2.5 text-xs text-blue-950">
                     <Sparkles className="w-5 h-5 text-amber-500 flex-shrink-0" />
                     <span>
-                      Completa los datos para registrar mercancía. El porcentaje de beneficio se calcula de forma automática y el producto se reflejará al instante en la tienda para <strong>todos los clientes</strong>.
+                      Completa los datos para registrar mercancía. El porcentaje de beneficio se calcula de forma automática y el producto se reflejará al instante en la tienda mediante <strong>localStorage</strong>.
                     </span>
                   </div>
 

@@ -11,7 +11,8 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { User } from '../types';
-import { authenticateUser, registerUser } from '../utils/storage';
+import { authenticateUser, registerUser, DEFAULT_ADMIN, DEFAULT_ADMIN_PASSWORD } from '../utils/storage';
+
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -41,16 +42,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return;
     setErrorMessage('');
     setSuccessMessage('');
-    setLoading(true);
-    const result = await authenticateUser(loginEmail, loginPassword);
-    setLoading(false);
+
+    const result = authenticateUser(loginEmail, loginPassword);
     if (result.success && result.user) {
       setSuccessMessage(`¡Bienvenido de nuevo, ${result.user.name}!`);
       setTimeout(() => {
@@ -62,9 +59,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return;
     setErrorMessage('');
     setSuccessMessage('');
 
@@ -73,15 +69,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
-    setLoading(true);
-    const result = await registerUser(registerName, registerEmail, registerPassword);
-    setLoading(false);
-    if (result.success && result.needsConfirmation) {
-      setSuccessMessage('¡Cuenta creada! Te enviamos un correo: abre el enlace para confirmarla y luego inicia sesión.');
-      setMode('login');
-      setLoginEmail(registerEmail);
-      return;
-    }
+    const result = registerUser(registerName, registerEmail, registerPassword);
     if (result.success && result.user) {
       setSuccessMessage('¡Cuenta creada con éxito! Iniciando sesión...');
       setTimeout(() => {
@@ -90,6 +78,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }, 600);
     } else {
       setErrorMessage(result.error || 'No se pudo crear la cuenta.');
+    }
+  };
+
+  // 1-Click Fill & Login with Admin credentials
+  const handleQuickAdminLogin = () => {
+    setLoginEmail(DEFAULT_ADMIN.email);
+    setLoginPassword(DEFAULT_ADMIN_PASSWORD);
+    setMode('login');
+    setErrorMessage('');
+    const result = authenticateUser(DEFAULT_ADMIN.email, DEFAULT_ADMIN_PASSWORD);
+    if (result.success && result.user) {
+      setSuccessMessage('¡Accediendo como Administrador Oficial!');
+      setTimeout(() => {
+        onLoginSuccess(result.user!);
+        onClose();
+      }, 500);
     }
   };
 
@@ -154,6 +158,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         </div>
 
+        {/* Quick Admin Test Banner */}
+        <div className="bg-blue-50 border-b border-blue-200/80 p-3 text-xs">
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-0.5">
+              <span className="font-bold text-blue-950 flex items-center gap-1 text-[11px] uppercase tracking-wide">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                Acceso de Administrador Oficial:
+              </span>
+              <p className="text-[11px] text-slate-600">
+                Email: <span className="font-mono font-bold text-slate-900">{DEFAULT_ADMIN.email}</span>
+              </p>
+              <p className="text-[11px] text-slate-600">
+                Contraseña: <span className="font-mono font-bold text-slate-900">{DEFAULT_ADMIN_PASSWORD}</span>
+              </p>
+            </div>
+            <button
+              id="quick-admin-login-button"
+              type="button"
+              onClick={handleQuickAdminLogin}
+              className="bg-amber-500 hover:bg-amber-400 text-blue-950 font-bold text-[10px] px-2.5 py-1.5 rounded-lg shadow-xs flex-shrink-0 transition-all flex items-center gap-1"
+            >
+              <span>Acceso Rápido</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
 
         {/* Modal Form Body */}
         <div className="p-6 space-y-4">
@@ -219,10 +249,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <button
                 id="submit-login-button"
                 type="submit"
-                disabled={loading}
-                className="w-full mt-2 disabled:opacity-60 bg-blue-900 hover:bg-blue-800 text-amber-300 font-bold text-xs py-3 px-4 rounded-xl shadow-md shadow-blue-950/20 active:scale-98 transition-all flex items-center justify-center gap-1.5 border border-amber-500/20"
+                className="w-full mt-2 bg-blue-900 hover:bg-blue-800 text-amber-300 font-bold text-xs py-3 px-4 rounded-xl shadow-md shadow-blue-950/20 active:scale-98 transition-all flex items-center justify-center gap-1.5 border border-amber-500/20"
               >
-                <span>{loading ? 'Entrando...' : 'Entrar a mi Cuenta'}</span>
+                <span>Entrar a mi Cuenta</span>
               </button>
             </form>
           ) : (
@@ -292,10 +321,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <button
                 id="submit-register-button"
                 type="submit"
-                disabled={loading}
-                className="w-full mt-2 disabled:opacity-60 bg-amber-500 hover:bg-amber-400 text-blue-950 font-black text-xs py-3 px-4 rounded-xl shadow-md active:scale-98 transition-all flex items-center justify-center gap-1.5"
+                className="w-full mt-2 bg-amber-500 hover:bg-amber-400 text-blue-950 font-black text-xs py-3 px-4 rounded-xl shadow-md active:scale-98 transition-all flex items-center justify-center gap-1.5"
               >
-                <span>{loading ? 'Creando cuenta...' : 'Registrarme y Obtener Beneficios'}</span>
+                <span>Registrarme y Obtener Beneficios</span>
               </button>
             </form>
           )}
@@ -303,7 +331,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <div className="pt-2 text-center">
             <span className="text-[11px] text-slate-400 flex items-center justify-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              Tu cuenta está protegida con conexión segura.
+              Tus datos se guardan de forma local y privada en tu navegador.
             </span>
           </div>
 

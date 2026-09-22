@@ -1,231 +1,220 @@
-// ======================================
-// DATOS DE LA TIENDA
-// Productos, pedidos y cuentas → Supabase (compartido por todos)
-// Carrito y lista de deseos → navegador de cada cliente
-// ======================================
+import { Product, CartItem, User, Order } from '../types';
+import { INITIAL_PRODUCTS } from '../data/initialProducts';
 
-import type { Session } from '@supabase/supabase-js';
-import { supabase, ADMIN_EMAIL } from '../lib/supabase';
-import { Product, User, Order, CartItem } from '../types';
-import { initialProducts } from '../data/initialProducts';
+const STORAGE_KEYS = {
+  PRODUCTS: 'temashop_products_v1',
+  CURRENT_USER: 'temashop_current_user_v1',
+  USERS: 'temashop_registered_users_v1',
+  CART: 'temashop_cart_v1',
+  ORDERS: 'temashop_orders_v1',
+  WISHLIST: 'temashop_wishlist_v1',
+};
 
-const CART_KEY = 'temashop_cart';
-const WISHLIST_KEY = 'temashop_wishlist';
+// Fixed Default Admin User
+export const DEFAULT_ADMIN: User = {
+  id: 'admin-miguel-001',
+  email: 'miguelgraphalterna@gmail.com',
+  name: 'Miguel (Administrador TemaShop)',
+  role: 'admin',
+  createdAt: Date.now(),
+};
 
-export interface AuthResult {
-  success: boolean;
-  user?: User | null;
-  error?: string;
-  needsConfirmation?: boolean;
+export const DEFAULT_ADMIN_PASSWORD = 'migue5213580';
+
+interface StoredAccount {
+  user: User;
+  passwordHash: string;
 }
 
-// ---------- helpers ----------
-function read<T>(key: string, fallback: T): T {
+// Helper to safely read from localStorage
+function safeGetItem<T>(key: string, fallback: T): T {
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
+    const item = localStorage.getItem(key);
+    if (!item) return fallback;
+    return JSON.parse(item) as T;
+  } catch (error) {
+    console.error(`Error reading ${key} from localStorage:`, error);
     return fallback;
   }
 }
 
-function write<T>(key: string, value: T): void {
+// Helper to safely write to localStorage
+function safeSetItem<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* sin almacenamiento disponible */
+  } catch (error) {
+    console.error(`Error writing ${key} to localStorage:`, error);
   }
 }
 
-function translateError(msg: string): string {
-  const m = msg.toLowerCase();
-  if (m.includes('invalid login credentials')) return 'Email o contraseña incorrectos.';
-  if (m.includes('email not confirmed')) return 'Debes confirmar tu correo. Revisa tu bandeja de entrada (y spam).';
-  if (m.includes('already registered')) return 'Este email ya está registrado. Inicia sesión.';
-  if (m.includes('password should be at least')) return 'La contraseña debe tener al menos 6 caracteres.';
-  if (m.includes('rate limit')) return 'Demasiados intentos. Espera un momento y vuelve a intentar.';
-  if (m.includes('stock insuficiente')) return msg.replace(/^.*Stock/, 'Stock');
-  return msg;
+// ----------------- PRODUCTS MANAGEMENT -----------------
+export function getStoredProducts(): Product[] {
+  const products = safeGetItem<Product[]>(STORAGE_KEYS.PRODUCTS, []);
+  if (!products || products.length === 0) {
+    safeSetItem(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    return INITIAL_PRODUCTS;
+  }
+  return products;
 }
 
-// ---------- mapeo filas <-> tipos ----------
-interface ProductRow {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  price: number | string;
-  original_price: number | string;
-  stock: number;
-  image_url: string;
-  rating: number | string;
-  reviews_count: number;
-  sales_count: number;
-  is_flash_deal: boolean;
-  badge: string | null;
+export function saveStoredProducts(products: Product[]): void {
+  safeSetItem(STORAGE_KEYS.PRODUCTS, products);
 }
 
-const toProduct = (r: ProductRow): Product => ({
-  id: r.id,
-  title: r.title,
-  description: r.description,
-  category: r.category,
-  price: Number(r.price),
-  originalPrice: Number(r.original_price),
-  stock: r.stock,
-  imageUrl: r.image_url,
-  rating: Number(r.rating),
-  reviewsCount: r.reviews_count,
-  salesCount: r.sales_count,
-  isFlashDeal: r.is_flash_deal,
-  badge: r.badge || undefined,
-});
-
-const toRow = (p: Omit<Product, 'id'> & { id?: string }) => ({
-  ...(p.id ? { id: p.id } : {}),
-  title: p.title,
-  description: p.description,
-  category: p.category,
-  price: p.price,
-  original_price: p.originalPrice,
-  stock: p.stock,
-  image_url: p.imageUrl,
-  rating: Math.min(5, Number(p.rating.toFixed(1))),
-  reviews_count: p.reviewsCount,
-  sales_count: p.salesCount,
-  is_flash_deal: p.isFlashDeal,
-  badge: p.badge || null,
-});
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const toOrder = (r: any): Order => ({
-  id: r.id,
-  orderNumber: r.order_number,
-  createdAt: r.created_at,
-  status: r.status,
-  customerName: r.customer_name,
-  customerEmail: r.customer_email,
-  address: r.address,
-  items: r.items,
-  paymentMethod: r.payment_method,
-  subtotal: Number(r.subtotal),
-  shipping: Number(r.shipping),
-  total: Number(r.total),
-});
-
-// ---------- cuentas ----------
-export function userFromSession(session: Session | null): User | null {
-  const u = session?.user;
-  if (!u?.email) return null;
-  const email = u.email.toLowerCase();
-  return {
-    id: u.id,
-    name: (u.user_metadata?.name as string) || (email === ADMIN_EMAIL ? 'Administrador' : email.split('@')[0]),
-    email,
-    role: email === ADMIN_EMAIL ? 'admin' : 'customer',
-    createdAt: u.created_at,
+export function addProductToStorage(newProduct: Omit<Product, 'id' | 'createdAt'>): Product {
+  const products = getStoredProducts();
+  const created: Product = {
+    ...newProduct,
+    id: `prod-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    createdAt: Date.now(),
   };
+  const updated = [created, ...products];
+  saveStoredProducts(updated);
+  return created;
 }
 
-export async function authenticateUser(email: string, password: string): Promise<AuthResult> {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: email.trim().toLowerCase(),
-    password,
-  });
-  if (error) return { success: false, error: translateError(error.message) };
-  return { success: true, user: userFromSession(data.session) };
+export function updateProductInStorage(updatedProduct: Product): Product[] {
+  const products = getStoredProducts();
+  const updated = products.map((p) => (p.id === updatedProduct.id ? updatedProduct : p));
+  saveStoredProducts(updated);
+  return updated;
 }
 
-export async function registerUser(name: string, email: string, password: string): Promise<AuthResult> {
-  if (!name.trim() || !email.trim()) return { success: false, error: 'Completa nombre y email.' };
-  const { data, error } = await supabase.auth.signUp({
-    email: email.trim().toLowerCase(),
-    password,
-    options: { data: { name: name.trim() }, emailRedirectTo: window.location.origin },
-  });
-  if (error) return { success: false, error: translateError(error.message) };
-  if (!data.session) return { success: true, needsConfirmation: true };
-  return { success: true, user: userFromSession(data.session) };
+export function deleteProductFromStorage(productId: string): Product[] {
+  const products = getStoredProducts();
+  const updated = products.filter((p) => p.id !== productId);
+  saveStoredProducts(updated);
+  return updated;
 }
 
-export async function logoutUser(): Promise<void> {
-  await supabase.auth.signOut();
+export function resetProductsToDefault(): Product[] {
+  safeSetItem(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+  return INITIAL_PRODUCTS;
 }
 
-// ---------- productos ----------
-export async function getProducts(): Promise<Product[]> {
-  const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
-  if (error) throw new Error(translateError(error.message));
-  return (data as ProductRow[]).map(toProduct);
+// ----------------- AUTHENTICATION -----------------
+export function getRegisteredAccounts(): StoredAccount[] {
+  const accounts = safeGetItem<StoredAccount[]>(STORAGE_KEYS.USERS, []);
+  // Ensure default admin always exists and is up to date
+  const filtered = accounts.filter(
+    (acc) => acc.user.email.toLowerCase() !== DEFAULT_ADMIN.email.toLowerCase()
+  );
+  const adminAccount: StoredAccount = {
+    user: DEFAULT_ADMIN,
+    passwordHash: DEFAULT_ADMIN_PASSWORD,
+  };
+  const updated = [adminAccount, ...filtered];
+  safeSetItem(STORAGE_KEYS.USERS, updated);
+  return updated;
 }
 
-export async function addProductToStorage(product: Omit<Product, 'id'>): Promise<Product> {
-  const { data, error } = await supabase.from('products').insert(toRow(product)).select().single();
-  if (error) throw new Error(translateError(error.message));
-  return toProduct(data as ProductRow);
+export function getCurrentUser(): User | null {
+  const user = safeGetItem<User | null>(STORAGE_KEYS.CURRENT_USER, null);
+  if (user && user.email.toLowerCase() === DEFAULT_ADMIN.email.toLowerCase()) {
+    return DEFAULT_ADMIN;
+  }
+  return user;
 }
 
-export async function updateProductInStorage(product: Product): Promise<Product[]> {
-  const { id, ...rest } = product;
-  const { error } = await supabase.from('products').update(toRow(rest)).eq('id', id);
-  if (error) throw new Error(translateError(error.message));
-  return getProducts();
+export function setCurrentUser(user: User | null): void {
+  if (user) {
+    safeSetItem(STORAGE_KEYS.CURRENT_USER, user);
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+  }
 }
 
-export async function deleteProductFromStorage(productId: string): Promise<Product[]> {
-  const { error } = await supabase.from('products').delete().eq('id', productId);
-  if (error) throw new Error(translateError(error.message));
-  return getProducts();
+export function authenticateUser(email: string, password: string): { success: boolean; user?: User; error?: string } {
+  const trimmedEmail = email.trim().toLowerCase();
+  
+  // Direct check for strict fixed administrator credentials
+  if (trimmedEmail === DEFAULT_ADMIN.email.toLowerCase()) {
+    if (password === DEFAULT_ADMIN_PASSWORD) {
+      setCurrentUser(DEFAULT_ADMIN);
+      return { success: true, user: DEFAULT_ADMIN };
+    } else {
+      return { success: false, error: 'Contraseña incorrecta para la cuenta de administrador.' };
+    }
+  }
+
+  const accounts = getRegisteredAccounts();
+  const account = accounts.find((acc) => acc.user.email.toLowerCase() === trimmedEmail);
+  if (!account) {
+    return { success: false, error: 'No existe una cuenta registrada con este correo electrónico.' };
+  }
+
+  if (account.passwordHash !== password) {
+    return { success: false, error: 'Contraseña incorrecta. Por favor verifica tus datos.' };
+  }
+
+  setCurrentUser(account.user);
+  return { success: true, user: account.user };
 }
 
-export async function resetProductsToDefault(): Promise<Product[]> {
-  const del = await supabase.from('products').delete().neq('id', '');
-  if (del.error) throw new Error(translateError(del.error.message));
-  const ins = await supabase.from('products').insert(initialProducts.map((p) => toRow(p)));
-  if (ins.error) throw new Error(translateError(ins.error.message));
-  return getProducts();
+export function registerUser(name: string, email: string, password: string): { success: boolean; user?: User; error?: string } {
+  const trimmedEmail = email.trim().toLowerCase();
+  const accounts = getRegisteredAccounts();
+
+  if (accounts.some((acc) => acc.user.email.toLowerCase() === trimmedEmail)) {
+    return { success: false, error: 'Este correo electrónico ya está registrado.' };
+  }
+
+  const newUser: User = {
+    id: `usr-${Date.now()}`,
+    email: trimmedEmail,
+    name: name.trim() || 'Cliente TemaShop',
+    role: 'customer',
+    createdAt: Date.now(),
+  };
+
+  const newAccount: StoredAccount = {
+    user: newUser,
+    passwordHash: password,
+  };
+
+  safeSetItem(STORAGE_KEYS.USERS, [...accounts, newAccount]);
+  setCurrentUser(newUser);
+  return { success: true, user: newUser };
 }
 
-// ---------- pedidos ----------
-export async function getOrders(): Promise<Order[]> {
-  const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-  if (error) return [];
-  return (data || []).map(toOrder);
+export function logoutUser(): void {
+  setCurrentUser(null);
 }
 
-export interface PlaceOrderInput {
-  customerName: string;
-  customerEmail: string;
-  address: Order['address'];
-  items: { productId: string; quantity: number }[];
-  paymentMethod: string;
+// ----------------- CART MANAGEMENT -----------------
+export function getStoredCart(): CartItem[] {
+  return safeGetItem<CartItem[]>(STORAGE_KEYS.CART, []);
 }
 
-export async function placeOrder(input: PlaceOrderInput): Promise<Order> {
-  const { data, error } = await supabase.rpc('place_order', {
-    p_customer_name: input.customerName,
-    p_customer_email: input.customerEmail,
-    p_address: input.address,
-    p_items: input.items,
-    p_payment_method: input.paymentMethod,
-  });
-  if (error) throw new Error(translateError(error.message));
-  return toOrder(data);
+export function saveStoredCart(cart: CartItem[]): void {
+  safeSetItem(STORAGE_KEYS.CART, cart);
 }
 
-// ---------- carrito y deseos (en el navegador) ----------
-export function getCart(): CartItem[] {
-  return read<CartItem[]>(CART_KEY, []);
+// ----------------- ORDERS MANAGEMENT -----------------
+export function getStoredOrders(): Order[] {
+  return safeGetItem<Order[]>(STORAGE_KEYS.ORDERS, []);
 }
 
-export function saveCart(cart: CartItem[]): void {
-  write(CART_KEY, cart);
+export function saveOrderToStorage(order: Order): void {
+  const orders = getStoredOrders();
+  safeSetItem(STORAGE_KEYS.ORDERS, [order, ...orders]);
 }
 
-export function getWishlist(): string[] {
-  return read<string[]>(WISHLIST_KEY, []);
+// ----------------- WISHLIST (LISTA DE DESEOS) -----------------
+export function getStoredWishlist(): string[] {
+  return safeGetItem<string[]>(STORAGE_KEYS.WISHLIST, []);
 }
 
-export function saveWishlist(ids: string[]): void {
-  write(WISHLIST_KEY, ids);
+export function saveStoredWishlist(wishlist: string[]): void {
+  safeSetItem(STORAGE_KEYS.WISHLIST, wishlist);
+}
+
+export function toggleProductInWishlist(productId: string): string[] {
+  const current = getStoredWishlist();
+  const exists = current.includes(productId);
+  const updated = exists 
+    ? current.filter((id) => id !== productId)
+    : [...current, productId];
+  saveStoredWishlist(updated);
+  return updated;
 }
