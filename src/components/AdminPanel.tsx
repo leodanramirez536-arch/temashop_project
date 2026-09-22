@@ -55,7 +55,7 @@ const PRESET_SAMPLE_IMAGES = [
   { label: 'Zapatillas Air Sport', category: 'Moda y Calzado', url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80' },
   { label: 'Freidora de Aire XL', category: 'Hogar y Cocina', url: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=800&q=80' },
   { label: 'Cafetera Italiana', category: 'Hogar y Cocina', url: 'https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?auto=format&fit=crop&w=800&q=80' },
-  { label: 'Suero Vitamina C', category: 'Belleza y Cuidado', url: 'https://images.unsplash.com/photo-1608248597359-0524458f4a13?auto=format&fit=crop&w=800&q=80' },
+  { label: 'Suero Vitamina C', category: 'Belleza y Cuidado', url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=800&q=80' },
   { label: 'Botella Térmica', category: 'Deportes y Aire Libre', url: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=800&q=80' },
   { label: 'Gafas Aviador', category: 'Accesorios', url: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=800&q=80' },
 ];
