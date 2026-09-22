@@ -11,6 +11,11 @@ export const CONTACT_WHATSAPP: string = env.VITE_CONTACT_WHATSAPP || ''; // ej: 
 // PayPal: el "Client ID" es público. Si no está configurado, PayPal no aparece en el pago.
 export const PAYPAL_CLIENT_ID: string = env.VITE_PAYPAL_CLIENT_ID || '';
 
+// Zelle y Cash App: pagos directos a tu cuenta. Si están vacíos, no aparecen en el pago.
+export const ZELLE_RECIPIENT: string = env.VITE_ZELLE_RECIPIENT || ''; // correo o teléfono registrado en Zelle
+export const ZELLE_NAME: string = env.VITE_ZELLE_NAME || '';           // nombre que verá el cliente en Zelle
+export const CASHAPP_TAG: string = (env.VITE_CASHAPP_TAG || '').replace(/^\$?/, env.VITE_CASHAPP_TAG ? '$' : ''); // ej: $MiTienda
+
 // Días para solicitar una devolución (debe coincidir con tu política real)
 export const RETURN_DAYS = Number(env.VITE_RETURN_DAYS || 7);
 

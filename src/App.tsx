@@ -471,7 +471,7 @@ export default function App() {
               <div>
                 <h4 className="text-xs sm:text-sm font-bold text-blue-950">Pago seguro</h4>
                 <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                  Paga con PayPal o tarjeta a través de PayPal, o en efectivo al recibir. Nunca guardamos los datos de tu tarjeta.
+                  Paga con tarjeta (procesada por PayPal), Zelle, Cash App o en efectivo al recibir. Nunca guardamos los datos de tu tarjeta.
                 </p>
               </div>
             </div>
