@@ -1,0 +1,6 @@
+{
+  "name": "TemaShop",
+  "description": "Plataforma de comercio electrónico moderna estilo Temu y Amazon con gestión de productos para administradores, ofertas flash, carrito interactivo y proceso de compra.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
