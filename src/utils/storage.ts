@@ -118,6 +118,15 @@ export function getProducts(): Product[] {
     write(PRODUCTS_KEY, initialProducts);
     return [...initialProducts];
   }
+  // reparar imágenes antiguas que ya no cargan
+  const BROKEN_IMG = 'photo-1608248597359-0524458f4a13';
+  if (stored.some((p) => p.imageUrl?.includes(BROKEN_IMG))) {
+    const fixed = stored.map((p) =>
+      p.imageUrl?.includes(BROKEN_IMG) ? { ...p, imageUrl: p.imageUrl.replace(BROKEN_IMG, 'photo-1620916566398-39f1143ab7be') } : p
+    );
+    write(PRODUCTS_KEY, fixed);
+    return fixed;
+  }
   return stored;
 }
 
