@@ -28,13 +28,9 @@ import {
   updateProductInStorage, 
   deleteProductFromStorage, 
   resetProductsToDefault,
-  DEFAULT_ADMIN,
-  DEFAULT_ADMIN_PASSWORD
 } from '../utils/storage';
 
-interface AdminPanelProps {
-  isOpen: boolean;
-  onClose: () => void;
+
   currentUser: User | null;
   products: Product[];
   orders: Order[];
