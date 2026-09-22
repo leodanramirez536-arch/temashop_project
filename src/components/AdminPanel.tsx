@@ -28,8 +28,6 @@ import {
   updateProductInStorage, 
   deleteProductFromStorage, 
   resetProductsToDefault,
-  DEFAULT_ADMIN,
-  DEFAULT_ADMIN_PASSWORD
 } from '../utils/storage';
 
 interface AdminPanelProps {
@@ -263,7 +261,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-300 font-medium">
-                Sesión de Administrador: <strong className="text-amber-300">{DEFAULT_ADMIN.email}</strong>
+                Sesión de Administrador
               </p>
             </div>
           </div>
@@ -285,18 +283,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
             <h3 className="text-lg font-bold text-slate-900">Acceso Exclusivo de Administrador</h3>
             <p className="text-xs text-slate-600 max-w-md mx-auto">
-              Debes iniciar sesión con las credenciales de administrador oficiales para acceder a este panel:
+              Debes iniciar sesión con tu cuenta de administrador para acceder a este panel.
             </p>
-            <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl max-w-sm mx-auto text-xs text-left space-y-1.5 shadow-xs">
-              <div>
-                <strong className="text-slate-500 block text-[10px] uppercase font-bold">Correo de Administrador:</strong>
-                <span className="font-mono font-bold text-blue-950 text-sm">{DEFAULT_ADMIN.email}</span>
-              </div>
-              <div>
-                <strong className="text-slate-500 block text-[10px] uppercase font-bold">Contraseña:</strong>
-                <span className="font-mono font-bold text-amber-600 text-sm">{DEFAULT_ADMIN_PASSWORD}</span>
-              </div>
-            </div>
             <button
               id="admin-login-redirect-btn"
               onClick={() => {
