@@ -80,22 +80,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  // 1-Click Fill & Login with Admin credentials
-  const handleQuickAdminLogin = () => {
-    setLoginEmail(DEFAULT_ADMIN.email);
-    setLoginPassword(DEFAULT_ADMIN_PASSWORD);
-    setMode('login');
-    setErrorMessage('');
-    const result = authenticateUser(DEFAULT_ADMIN.email, DEFAULT_ADMIN_PASSWORD);
-    if (result.success && result.user) {
-      setSuccessMessage('¡Accediendo como Administrador Oficial!');
-      setTimeout(() => {
-        onLoginSuccess(result.user!);
-        onClose();
-      }, 500);
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex items-center justify-center p-4">
       <div 

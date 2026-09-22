@@ -30,7 +30,9 @@ import {
   resetProductsToDefault,
 } from '../utils/storage';
 
-
+interface AdminPanelProps {
+  isOpen: boolean;
+  onClose: () => void;
   currentUser: User | null;
   products: Product[];
   orders: Order[];
