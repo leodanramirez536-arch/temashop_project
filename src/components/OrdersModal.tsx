@@ -3,6 +3,7 @@ import { X, Package, Truck, ShoppingBag, Search, AlertCircle } from 'lucide-reac
 import { Order, User } from '../types';
 import { fetchGuestOrder, ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '../lib/api';
 import { formatMoney } from '../config';
+import { PaymentInstructions } from './PaymentInstructions';
 
 interface OrdersModalProps {
   isOpen: boolean;
@@ -168,6 +169,8 @@ export const OrdersModal: React.FC<OrdersModalProps> = ({
                     </div>
                   ))}
                 </div>
+
+                {order.status !== 'cancelado' && <PaymentInstructions order={order} />}
 
                 <div className="text-[11px] text-slate-500 flex items-center gap-1">
                   <Truck className="w-3.5 h-3.5" /> {order.address.street}, {order.address.city}

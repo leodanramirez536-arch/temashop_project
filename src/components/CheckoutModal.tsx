@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { X, CheckCircle2, Truck, Lock, Package, Banknote, AlertCircle, CreditCard, Clock } from 'lucide-react';
 import { CartItem, Order, User, StoreSettings, PaymentMethod } from '../types';
 import { placeOrder, paypalCreateOrder, paypalCaptureOrder, checkCoupon, PAYMENT_METHOD_LABELS } from '../lib/api';
-import { PAYPAL_CLIENT_ID, DELIVERY_ESTIMATE, formatMoney } from '../config';
+import { PAYPAL_CLIENT_ID, ZELLE_RECIPIENT, CASHAPP_TAG, DELIVERY_ESTIMATE, formatMoney } from '../config';
+import { PaymentInstructions } from './PaymentInstructions';
 import type { LegalPage } from './LegalModal';
 
 interface CheckoutModalProps {
@@ -56,6 +57,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onOpenAuth,
 }) => {
   const paypalEnabled = !!PAYPAL_CLIENT_ID;
+  const methods: { id: PaymentMethod; title: string; subtitle: string; info: string }[] = [
+    ...(paypalEnabled ? [{ id: 'paypal' as PaymentMethod, title: 'Tarjeta', subtitle: 'Débito, crédito o PayPal',
+      info: 'Al continuar verás el formulario seguro de PayPal. Puedes pagar con tarjeta de débito o crédito sin crear cuenta PayPal. TemaShop no ve ni guarda los datos de tu tarjeta.' }] : []),
+    ...(ZELLE_RECIPIENT ? [{ id: 'zelle' as PaymentMethod, title: 'Zelle', subtitle: 'Desde tu banco',
+      info: 'Al confirmar te mostramos a dónde enviar el pago por Zelle. Preparamos tu pedido cuando recibimos el pago.' }] : []),
+    ...(CASHAPP_TAG ? [{ id: 'cashapp' as PaymentMethod, title: 'Cash App', subtitle: CASHAPP_TAG,
+      info: 'Al confirmar te mostramos el enlace para pagar con Cash App. Preparamos tu pedido cuando recibimos el pago.' }] : []),
+    { id: 'cash_on_delivery', title: 'Efectivo', subtitle: 'Al recibir',
+      info: 'Pagas en efectivo al recibir tu pedido. Te contactaremos por teléfono o WhatsApp para confirmar la entrega.' },
+  ];
   const [step, setStep] = useState<'form' | 'pay' | 'success'>('form');
   const [order, setOrder] = useState<Order | null>(null);
 
@@ -68,7 +79,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [zipCode, setZipCode] = useState('');
   const [notes, setNotes] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(paypalEnabled ? 'paypal' : 'cash_on_delivery');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(methods[0].id);
   const [couponPercent, setCouponPercent] = useState(0);
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -181,7 +192,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   };
 
   const headerTitle =
-    step === 'form' ? 'Finalizar pedido' : step === 'pay' ? 'Pagar con PayPal' : '¡Pedido recibido!';
+    step === 'form' ? 'Finalizar pedido' : step === 'pay' ? 'Pagar con tarjeta' : '¡Pedido recibido!';
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6">
@@ -283,34 +294,27 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 2. Forma de pago
               </h3>
 
-              <div className={`grid ${paypalEnabled ? 'grid-cols-2' : 'grid-cols-1'} gap-2.5 mb-3`}>
-                {paypalEnabled && (
-                  <button type="button" id="paymethod-paypal" onClick={() => setPaymentMethod('paypal')}
-                    className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
-                      paymentMethod === 'paypal' ? 'border-blue-700 bg-blue-50 text-blue-900 ring-2 ring-blue-200' : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                    }`}>
-                    <span className="text-blue-700 font-black italic text-base">PayPal</span>
-                    <span className="font-medium text-[11px]">PayPal o tarjeta</span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-3">
+                {methods.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    id={`paymethod-${m.id}`}
+                    onClick={() => setPaymentMethod(m.id)}
+                    className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-0.5 transition-all ${
+                      paymentMethod === m.id ? 'border-blue-900 bg-blue-50 text-blue-950 ring-2 ring-blue-200' : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                    }`}
+                  >
+                    {m.id === 'paypal' ? <CreditCard className="w-5 h-5 text-blue-700" /> : m.id === 'cash_on_delivery' ? <Banknote className="w-5 h-5 text-emerald-600" /> : <span className={`font-black text-base ${m.id === 'zelle' ? 'text-purple-700' : 'text-emerald-600'}`}>{m.id === 'zelle' ? 'Z' : '$'}</span>}
+                    <span>{m.title}</span>
+                    <span className="font-medium text-[10px] text-slate-500 truncate max-w-full">{m.subtitle}</span>
                   </button>
-                )}
-                <button type="button" id="paymethod-cash" onClick={() => setPaymentMethod('cash_on_delivery')}
-                  className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
-                    paymentMethod === 'cash_on_delivery' ? 'border-emerald-600 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-200' : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                  }`}>
-                  <Banknote className="w-5 h-5 text-emerald-600" />
-                  <span>Contra entrega</span>
-                </button>
+                ))}
               </div>
 
-              {paymentMethod === 'paypal' ? (
-                <p className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900">
-                  Al continuar verás los botones de PayPal. Puedes pagar con tu cuenta PayPal o con tarjeta de débito/crédito. TemaShop no ve ni guarda los datos de tu tarjeta.
-                </p>
-              ) : (
-                <p className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900">
-                  Pagas en efectivo al recibir tu pedido. Te contactaremos por teléfono o WhatsApp para confirmar la entrega.
-                </p>
-              )}
+              <p className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700">
+                {methods.find((m) => m.id === paymentMethod)?.info}
+              </p>
             </div>
 
             <div className="p-4 bg-blue-50/70 border border-blue-200/80 rounded-2xl space-y-2 text-xs">
@@ -361,7 +365,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               ) : (
                 <>
                   <Lock className="w-4 h-4" />
-                  <span>{paymentMethod === 'paypal' ? 'Continuar al pago' : 'Confirmar pedido'} ({formatMoney(total)})</span>
+                  <span>{paymentMethod === 'paypal' ? 'Continuar al pago con tarjeta' : 'Confirmar pedido'} ({formatMoney(total)})</span>
                 </>
               )}
             </button>
@@ -401,8 +405,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <p className="text-xs text-slate-500 max-w-md mx-auto">
                 {order.paymentStatus === 'pagado'
                   ? 'Recibimos tu pago. Te contactaremos para coordinar la entrega.'
-                  : 'Recibimos tu pedido. Te contactaremos por teléfono o WhatsApp para confirmar la entrega.'}
+                  : order.paymentMethod === 'zelle' || order.paymentMethod === 'cashapp'
+                    ? 'Tu pedido está reservado. Completa el pago con los datos de abajo.'
+                    : 'Recibimos tu pedido. Te contactaremos por teléfono o WhatsApp para confirmar la entrega.'}
               </p>
+            </div>
+
+            <div className="max-w-lg mx-auto">
+              <PaymentInstructions order={order} />
             </div>
 
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left space-y-3 max-w-lg mx-auto text-xs">

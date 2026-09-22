@@ -24,7 +24,7 @@ export const FlashDealBanner: React.FC<FlashDealBannerProps> = ({ onExploreDeals
           </h1>
 
           <p className="text-blue-100 text-xs sm:text-sm max-w-xl font-normal leading-relaxed">
-            Compra fácil y recibe en tu casa. Paga con PayPal, con tarjeta a través de PayPal o en efectivo al recibir.
+            Compra fácil y recibe en tu casa. Paga con tarjeta, Zelle, Cash App o en efectivo al recibir.
           </p>
 
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-2 text-xs font-semibold text-blue-200">

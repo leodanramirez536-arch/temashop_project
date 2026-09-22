@@ -28,7 +28,7 @@ const Terms = () => (
     <H>2. Pedidos</H>
     <p>Un pedido se considera aceptado cuando lo confirmamos. Podemos cancelar un pedido si el producto se agotó, si no podemos verificar los datos de entrega o si detectamos un uso fraudulento. Si ya pagaste, te devolvemos el importe completo.</p>
     <H>3. Pagos</H>
-    <p>Aceptamos PayPal (incluido el pago con tarjeta a través de PayPal) y pago en efectivo contra entrega. Los pagos en línea los procesa PayPal; {STORE_NAME} no recibe ni guarda los datos de tu tarjeta.</p>
+    <p>Aceptamos tarjeta de débito o crédito y PayPal (procesados por PayPal), Zelle, Cash App y efectivo contra entrega. {STORE_NAME} no recibe ni guarda los datos de tu tarjeta. En pagos por Zelle o Cash App, el pedido se prepara cuando confirmamos que el pago llegó; si no recibimos el pago en 48 horas, el pedido puede cancelarse.</p>
     <H>4. Envíos</H>
     <p>El tiempo estimado de entrega es de {DELIVERY_ESTIMATE} desde la confirmación. Es una estimación y puede variar por causas ajenas a nosotros. Consulta la Política de Envíos y Devoluciones.</p>
     <H>5. Cuentas</H>
@@ -48,7 +48,7 @@ const Privacy = () => (
     <H>Para qué los usamos</H>
     <p>Solo para procesar y entregar tus pedidos, comunicarnos contigo sobre ellos, atender devoluciones y cumplir obligaciones legales. No vendemos tus datos.</p>
     <H>Con quién los compartimos</H>
-    <p>Con los proveedores necesarios para operar la tienda: el servicio de base de datos y cuentas (Supabase), el procesador de pagos (PayPal) y la empresa o persona que realiza la entrega.</p>
+    <p>Con los proveedores necesarios para operar la tienda: el servicio de base de datos y cuentas (Supabase), los servicios de pago (PayPal, Zelle, Cash App) y la empresa o persona que realiza la entrega.</p>
     <H>Contraseñas y pagos</H>
     <p>Tu contraseña se guarda cifrada y nadie de {STORE_NAME} puede verla. Nunca guardamos los datos de tu tarjeta.</p>
     <H>En tu navegador</H>
@@ -67,7 +67,7 @@ const Returns = () => (
     <p>Puedes solicitar una devolución dentro de los {RETURN_DAYS} días siguientes a la entrega. El producto debe estar sin usar, en su empaque original y con todos sus accesorios.</p>
     <p>Si el producto llegó dañado, defectuoso o no corresponde con lo que pediste, avísanos dentro de las 48 horas siguientes a la entrega y lo cambiamos o te devolvemos el dinero sin costo para ti.</p>
     <H>Reembolsos</H>
-    <p>Una vez recibido y revisado el producto devuelto, hacemos el reembolso por el mismo medio de pago: a tu cuenta PayPal si pagaste en línea, o por transferencia si pagaste contra entrega.</p>
+    <p>Una vez recibido y revisado el producto devuelto, hacemos el reembolso por el mismo medio de pago: a tu tarjeta o cuenta PayPal si pagaste con tarjeta, por Zelle o Cash App si pagaste por esos medios, o por transferencia si pagaste en efectivo.</p>
     <H>Cancelaciones</H>
     <p>Puedes cancelar tu pedido sin costo antes de que sea enviado.</p>
     <H>Cómo solicitarla</H>

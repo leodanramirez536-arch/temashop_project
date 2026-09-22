@@ -40,7 +40,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onOpenLegal, o
             </div>
             <div>
               <h4 className="text-xs font-bold text-white uppercase tracking-wider">Pago seguro</h4>
-              <p className="text-[11px] text-gray-400">PayPal, tarjeta vía PayPal o contra entrega</p>
+              <p className="text-[11px] text-gray-400">Tarjeta, Zelle, Cash App o efectivo</p>
             </div>
           </div>
         </div>

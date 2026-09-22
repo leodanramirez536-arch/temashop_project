@@ -78,7 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="bg-amber-500 text-blue-950 px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider flex items-center gap-1">
               <Crown className="w-3 h-3 text-blue-950 fill-current" /> Selección Premium
             </span>
-            <span className="hidden sm:inline text-blue-100">Envío gratis en pedidos desde US$25 · Paga con PayPal o contra entrega</span>
+            <span className="hidden sm:inline text-blue-100">Envío gratis en pedidos desde US$25 · Tarjeta, Zelle, Cash App o efectivo</span>
             <span className="sm:hidden text-[11px] text-blue-100">Envío gratis desde US$25</span>
           </div>
           <div className="flex items-center gap-4 text-[11px]">
