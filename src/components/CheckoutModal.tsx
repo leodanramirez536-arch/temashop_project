@@ -1,26 +1,45 @@
-import React, { useState } from 'react';
-import { 
-  X, 
-  CreditCard, 
-  CheckCircle2, 
-  Truck, 
-  ShieldCheck, 
-  Lock, 
-  Package, 
-  Banknote,
-  Sparkles
-} from 'lucide-react';
-import { CartItem, Order, User } from '../types';
-import { saveOrderToStorage } from '../utils/storage';
+import React, { useEffect, useRef, useState } from 'react';
+import { X, CheckCircle2, Truck, Lock, Package, Banknote, AlertCircle, CreditCard, Clock } from 'lucide-react';
+import { CartItem, Order, User, StoreSettings, PaymentMethod } from '../types';
+import { placeOrder, paypalCreateOrder, paypalCaptureOrder, checkCoupon, PAYMENT_METHOD_LABELS } from '../lib/api';
+import { PAYPAL_CLIENT_ID, DELIVERY_ESTIMATE, formatMoney } from '../config';
+import type { LegalPage } from './LegalModal';
 
 interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
   cart: CartItem[];
   currentUser: User | null;
-  discountRate: number;
+  couponCode: string | null;
+  settings: StoreSettings;
   onOrderSuccess: (order: Order) => void;
+  onOrderUpdated: (order: Order) => void;
   onViewOrders: () => void;
+  onOpenLegal: (page: LegalPage) => void;
+  onOpenAuth: () => void;
+}
+
+const inputClass =
+  'w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-900 focus:outline-none';
+
+// Carga el SDK de PayPal una sola vez
+let paypalSdkPromise: Promise<any> | null = null;
+function loadPayPalSdk(): Promise<any> {
+  if ((window as any).paypal) return Promise.resolve((window as any).paypal);
+  if (!paypalSdkPromise) {
+    paypalSdkPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(PAYPAL_CLIENT_ID)}&currency=USD&intent=capture&components=buttons&enable-funding=card`;
+      script.async = true;
+      script.onload = () => resolve((window as any).paypal);
+      script.onerror = () => {
+        paypalSdkPromise = null;
+        reject(new Error('No se pudo cargar PayPal. Revisa tu conexión.'));
+      };
+      document.body.appendChild(script);
+    });
+  }
+  return paypalSdkPromise;
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
@@ -28,482 +47,414 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onClose,
   cart,
   currentUser,
-  discountRate,
+  couponCode,
+  settings,
   onOrderSuccess,
+  onOrderUpdated,
   onViewOrders,
+  onOpenLegal,
+  onOpenAuth,
 }) => {
-  const [step, setStep] = useState<'form' | 'success'>('form');
-  const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
+  const paypalEnabled = !!PAYPAL_CLIENT_ID;
+  const [step, setStep] = useState<'form' | 'pay' | 'success'>('form');
+  const [order, setOrder] = useState<Order | null>(null);
 
-  // Form states
-  const [name, setName] = useState(currentUser?.name || '');
-  const [email, setEmail] = useState(currentUser?.email || '');
-  const [phone, setPhone] = useState('+34 612 345 678');
-  const [street, setStreet] = useState('Paseo de la Castellana 110, 4º D');
-  const [city, setCity] = useState('Madrid');
-  const [state, setState] = useState('Madrid');
-  const [zipCode, setZipCode] = useState('28046');
-
-  // Payment states
-  const [paymentMethod, setPaymentMethod] = useState<'credit_card' | 'paypal' | 'cash_on_delivery'>('credit_card');
-  const [cardNumber, setCardNumber] = useState('4532 •••• •••• 8920');
-  const [cardExpiry, setCardExpiry] = useState('08/29');
-  const [cardCvv, setCardCvv] = useState('742');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [street, setStreet] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zipCode, setZipCode] = useState('');
+  const [notes, setNotes] = useState('');
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(paypalEnabled ? 'paypal' : 'cash_on_delivery');
+  const [couponPercent, setCouponPercent] = useState(0);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [formError, setFormError] = useState('');
+  const [payError, setPayError] = useState('');
+  const paypalRef = useRef<HTMLDivElement>(null);
+
+  // Reinicia el formulario cada vez que se abre
+  useEffect(() => {
+    if (isOpen) {
+      setStep('form');
+      setOrder(null);
+      setFormError('');
+      setPayError('');
+      setName((n) => n || currentUser?.name || '');
+      setEmail(currentUser?.email || '');
+    }
+  }, [isOpen, currentUser]);
+
+  useEffect(() => {
+    if (!isOpen || !couponCode) {
+      setCouponPercent(0);
+      return;
+    }
+    checkCoupon(couponCode).then(setCouponPercent).catch(() => setCouponPercent(0));
+  }, [isOpen, couponCode]);
+
+  // Muestra los botones de PayPal para el pedido creado
+  useEffect(() => {
+    if (step !== 'pay' || !order || !paypalRef.current) return;
+    let cancelled = false;
+    const container = paypalRef.current;
+    container.innerHTML = '';
+    loadPayPalSdk()
+      .then((paypal) => {
+        if (cancelled || !paypal) return;
+        return paypal
+          .Buttons({
+            style: { layout: 'vertical', shape: 'rect', label: 'pay' },
+            createOrder: () => paypalCreateOrder(order.id),
+            onApprove: async (data: any) => {
+              setPayError('');
+              setIsProcessing(true);
+              try {
+                await paypalCaptureOrder(order.id, data.orderID);
+                const paid = { ...order, paymentStatus: 'pagado' as const, status: 'confirmado' as const };
+                setOrder(paid);
+                onOrderUpdated(paid);
+                setStep('success');
+              } catch (err: any) {
+                setPayError(err?.message || 'No se pudo confirmar el pago.');
+              } finally {
+                setIsProcessing(false);
+              }
+            },
+            onError: (err: any) => {
+              setPayError(err?.message || 'PayPal no pudo procesar el pago. Inténtalo de nuevo.');
+            },
+          })
+          .render(container);
+      })
+      .catch((err: any) => setPayError(err?.message || 'No se pudo cargar PayPal.'));
+    return () => {
+      cancelled = true;
+    };
+  }, [step, order]);
 
   if (!isOpen) return null;
 
-  const FREE_SHIPPING_THRESHOLD = 25;
   const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const discount = (subtotal * discountRate) / 100;
-  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : 4.99;
+  const discount = Math.round(subtotal * couponPercent) / 100;
+  const shipping = subtotal >= settings.freeShippingThreshold || subtotal === 0 ? 0 : settings.shippingFee;
   const total = Math.max(0, subtotal - discount + shipping);
 
-  const handleSubmitOrder = (e: React.FormEvent) => {
+  const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-
-    if (!name.trim() || !email.trim() || !street.trim() || !city.trim() || !zipCode.trim()) {
-      setFormError('Por favor completa todos los campos de entrega requeridos.');
+    if (cart.length === 0) {
+      setFormError('Tu bolsa está vacía.');
+      return;
+    }
+    if (phone.replace(/\D/g, '').length < 7) {
+      setFormError('Escribe un número de teléfono válido para coordinar la entrega.');
+      return;
+    }
+    if (!acceptTerms) {
+      setFormError('Debes aceptar los Términos y la Política de Privacidad para continuar.');
       return;
     }
 
     setIsProcessing(true);
-
-    // Simulate payment gateway processing
-    setTimeout(() => {
-      // Calculate estimated delivery: 3 to 5 days ahead
-      const deliveryDate = new Date();
-      deliveryDate.setDate(deliveryDate.getDate() + 4);
-      const deliveryString = deliveryDate.toLocaleDateString('es-ES', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      });
-
-      const randomDigits = Math.floor(100000 + Math.random() * 900000);
-      const newOrder: Order = {
-        id: `ord-${Date.now()}`,
-        orderNumber: `TS-${randomDigits}`,
-        userId: currentUser?.id || 'guest',
-        customerName: name,
-        customerEmail: email,
-        customerPhone: phone,
-        address: {
-          street,
-          city,
-          state,
-          zipCode,
-        },
-        items: cart.map((item) => ({
-          id: item.product.id,
-          title: item.product.title,
-          price: item.product.price,
-          quantity: item.quantity,
-          imageUrl: item.product.imageUrl,
-        })),
-        subtotal,
-        discount,
-        shipping,
-        total,
+    try {
+      const created = await placeOrder({
+        name,
+        email,
+        phone,
+        address: { street, city, state, zipCode, notes },
+        items: cart.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
         paymentMethod,
-        status: 'completada',
-        createdAt: Date.now(),
-        estimatedDeliveryDate: deliveryString,
-      };
-
-      saveOrderToStorage(newOrder);
-      setCompletedOrder(newOrder);
+        coupon: couponPercent > 0 ? couponCode : null,
+      });
+      setOrder(created);
+      onOrderSuccess(created);
+      setStep(paymentMethod === 'paypal' ? 'pay' : 'success');
+    } catch (err: any) {
+      setFormError(err?.message || 'No se pudo registrar el pedido. Inténtalo de nuevo.');
+    } finally {
       setIsProcessing(false);
-      setStep('success');
-      onOrderSuccess(newOrder);
-    }, 1200);
+    }
   };
+
+  const headerTitle =
+    step === 'form' ? 'Finalizar pedido' : step === 'pay' ? 'Pagar con PayPal' : '¡Pedido recibido!';
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6">
-      <div 
+      <div
         id="checkout-modal-container"
+        role="dialog"
+        aria-modal="true"
         className="relative bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-slate-200"
       >
-        {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-2">
             <Lock className="w-5 h-5 text-blue-900" />
-            <h2 className="text-lg font-black text-slate-900">
-              {step === 'form' ? 'Finalizar Pedido Departamental' : '¡Pedido Confirmado con Éxito!'}
-            </h2>
+            <h2 className="text-lg font-black text-slate-900">{headerTitle}</h2>
           </div>
           <button
             id="close-checkout-modal-button"
             onClick={onClose}
+            aria-label="Cerrar"
             className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {step === 'form' ? (
+        {step === 'form' && (
           <form onSubmit={handleSubmitOrder} className="p-6 space-y-6">
-            
             {formError && (
-              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-semibold">
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {formError}
               </div>
             )}
 
-            {/* Section 1: Customer & Shipping Details */}
+            {!currentUser && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex flex-wrap items-center justify-between gap-2">
+                <span>Puedes comprar sin cuenta. Si inicias sesión, verás tus pedidos desde cualquier dispositivo.</span>
+                <button type="button" onClick={onOpenAuth} className="font-bold underline">
+                  Iniciar sesión
+                </button>
+              </div>
+            )}
+
             <div>
               <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
                 <Truck className="w-4 h-4 text-blue-900" />
-                1. Datos de Entrega Prioritaria
+                1. Datos de entrega
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Nombre Completo *</label>
-                  <input
-                    id="checkout-name"
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Ej. Carlos Mendoza"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-900 focus:outline-none"
-                  />
+                  <label htmlFor="checkout-name" className="block text-slate-600 font-semibold mb-1">Nombre completo *</label>
+                  <input id="checkout-name" type="text" required autoComplete="name" value={name}
+                    onChange={(e) => setName(e.target.value)} placeholder="Nombre y apellido" className={inputClass} />
                 </div>
-
                 <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Correo Electrónico *</label>
-                  <input
-                    id="checkout-email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="carlos@ejemplo.com"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-900 focus:outline-none"
-                  />
+                  <label htmlFor="checkout-email" className="block text-slate-600 font-semibold mb-1">Correo electrónico *</label>
+                  <input id="checkout-email" type="email" required autoComplete="email" value={email}
+                    readOnly={!!currentUser} onChange={(e) => setEmail(e.target.value)} placeholder="tucorreo@ejemplo.com"
+                    className={`${inputClass} ${currentUser ? 'text-slate-500' : ''}`} />
                 </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-slate-600 font-semibold mb-1">Dirección de Entrega *</label>
-                  <input
-                    id="checkout-street"
-                    type="text"
-                    required
-                    value={street}
-                    onChange={(e) => setStreet(e.target.value)}
-                    placeholder="Calle, número, departamento o piso"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-900 focus:outline-none"
-                  />
-                </div>
-
                 <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Ciudad *</label>
-                  <input
-                    id="checkout-city"
-                    type="text"
-                    required
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="Madrid"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-900 focus:outline-none"
-                  />
+                  <label htmlFor="checkout-phone" className="block text-slate-600 font-semibold mb-1">Teléfono / WhatsApp *</label>
+                  <input id="checkout-phone" type="tel" required autoComplete="tel" value={phone}
+                    onChange={(e) => setPhone(e.target.value)} placeholder="809-000-0000" className={inputClass} />
                 </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-slate-600 font-semibold mb-1">Provincia/Estado</label>
-                    <input
-                      id="checkout-state"
-                      type="text"
-                      value={state}
-                      onChange={(e) => setState(e.target.value)}
-                      placeholder="Madrid"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-900 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-600 font-semibold mb-1">C.P. *</label>
-                    <input
-                      id="checkout-zip"
-                      type="text"
-                      required
-                      value={zipCode}
-                      onChange={(e) => setZipCode(e.target.value)}
-                      placeholder="28013"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-900 focus:outline-none"
-                    />
-                  </div>
+                <div>
+                  <label htmlFor="checkout-city" className="block text-slate-600 font-semibold mb-1">Ciudad *</label>
+                  <input id="checkout-city" type="text" required autoComplete="address-level2" value={city}
+                    onChange={(e) => setCity(e.target.value)} placeholder="Ciudad" className={inputClass} />
                 </div>
-
                 <div className="sm:col-span-2">
-                  <label className="block text-slate-600 font-semibold mb-1">Teléfono de Contacto</label>
-                  <input
-                    id="checkout-phone"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+34 612 345 678"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-900 focus:outline-none"
-                  />
+                  <label htmlFor="checkout-street" className="block text-slate-600 font-semibold mb-1">Dirección *</label>
+                  <input id="checkout-street" type="text" required autoComplete="street-address" value={street}
+                    onChange={(e) => setStreet(e.target.value)} placeholder="Calle, número, sector, edificio / apto."
+                    className={inputClass} />
+                </div>
+                <div>
+                  <label htmlFor="checkout-state" className="block text-slate-600 font-semibold mb-1">Provincia</label>
+                  <input id="checkout-state" type="text" autoComplete="address-level1" value={state}
+                    onChange={(e) => setState(e.target.value)} placeholder="Provincia" className={inputClass} />
+                </div>
+                <div>
+                  <label htmlFor="checkout-zip" className="block text-slate-600 font-semibold mb-1">Código postal</label>
+                  <input id="checkout-zip" type="text" autoComplete="postal-code" value={zipCode}
+                    onChange={(e) => setZipCode(e.target.value)} placeholder="Opcional" className={inputClass} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="checkout-notes" className="block text-slate-600 font-semibold mb-1">Indicaciones para la entrega</label>
+                  <input id="checkout-notes" type="text" value={notes} maxLength={300}
+                    onChange={(e) => setNotes(e.target.value)} placeholder="Opcional: referencias, horario, etc."
+                    className={inputClass} />
                 </div>
               </div>
             </div>
 
-            {/* Section 2: Payment Method */}
             <div className="pt-2 border-t border-slate-100">
               <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-blue-900" />
-                2. Método de Pago Seguro
+                2. Forma de pago
               </h3>
 
-              <div className="grid grid-cols-3 gap-2.5 mb-3">
-                <button
-                  type="button"
-                  id="paymethod-card"
-                  onClick={() => setPaymentMethod('credit_card')}
-                  className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
-                    paymentMethod === 'credit_card'
-                      ? 'border-blue-900 bg-blue-50 text-blue-950 ring-2 ring-blue-200'
-                      : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                  }`}
-                >
-                  <CreditCard className="w-5 h-5 text-amber-500" />
-                  <span>Tarjeta</span>
-                </button>
-
-                <button
-                  type="button"
-                  id="paymethod-paypal"
-                  onClick={() => setPaymentMethod('paypal')}
-                  className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
-                    paymentMethod === 'paypal'
-                      ? 'border-blue-700 bg-blue-50 text-blue-900 ring-2 ring-blue-200'
-                      : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                  }`}
-                >
-                  <span className="text-blue-700 font-black italic text-base">P</span>
-                  <span>PayPal</span>
-                </button>
-
-                <button
-                  type="button"
-                  id="paymethod-cash"
-                  onClick={() => setPaymentMethod('cash_on_delivery')}
-                  className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
-                    paymentMethod === 'cash_on_delivery'
-                      ? 'border-emerald-600 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-200'
-                      : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                  }`}
-                >
+              <div className={`grid ${paypalEnabled ? 'grid-cols-2' : 'grid-cols-1'} gap-2.5 mb-3`}>
+                {paypalEnabled && (
+                  <button type="button" id="paymethod-paypal" onClick={() => setPaymentMethod('paypal')}
+                    className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+                      paymentMethod === 'paypal' ? 'border-blue-700 bg-blue-50 text-blue-900 ring-2 ring-blue-200' : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                    }`}>
+                    <span className="text-blue-700 font-black italic text-base">PayPal</span>
+                    <span className="font-medium text-[11px]">PayPal o tarjeta</span>
+                  </button>
+                )}
+                <button type="button" id="paymethod-cash" onClick={() => setPaymentMethod('cash_on_delivery')}
+                  className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+                    paymentMethod === 'cash_on_delivery' ? 'border-emerald-600 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-200' : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                  }`}>
                   <Banknote className="w-5 h-5 text-emerald-600" />
-                  <span>Contra Entrega</span>
+                  <span>Contra entrega</span>
                 </button>
               </div>
 
-              {/* Card form simulator */}
-              {paymentMethod === 'credit_card' && (
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5 text-xs">
-                  <div>
-                    <label className="block text-slate-500 font-semibold mb-1">Número de Tarjeta</label>
-                    <input
-                      id="card-number-input"
-                      type="text"
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                      placeholder="4532 0000 0000 0000"
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-slate-500 font-semibold mb-1">Vencimiento</label>
-                      <input
-                        id="card-expiry-input"
-                        type="text"
-                        value={cardExpiry}
-                        onChange={(e) => setCardExpiry(e.target.value)}
-                        placeholder="MM/AA"
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-500 font-semibold mb-1">CVV / CVC</label>
-                      <input
-                        id="card-cvv-input"
-                        type="password"
-                        value={cardCvv}
-                        onChange={(e) => setCardCvv(e.target.value)}
-                        placeholder="123"
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:ring-1 focus:ring-blue-900 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {paymentMethod === 'paypal' && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-blue-700 flex-shrink-0" />
-                  <span>Serás conectado de forma segura con PayPal Express Checkout para autorizar la orden.</span>
-                </div>
-              )}
-
-              {paymentMethod === 'cash_on_delivery' && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  <span>Pagarás en efectivo directamente al repartidor cuando recibas tu paquete en la puerta.</span>
-                </div>
+              {paymentMethod === 'paypal' ? (
+                <p className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900">
+                  Al continuar verás los botones de PayPal. Puedes pagar con tu cuenta PayPal o con tarjeta de débito/crédito. TemaShop no ve ni guarda los datos de tu tarjeta.
+                </p>
+              ) : (
+                <p className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900">
+                  Pagas en efectivo al recibir tu pedido. Te contactaremos por teléfono o WhatsApp para confirmar la entrega.
+                </p>
               )}
             </div>
 
-            {/* Order Summary & Submit */}
             <div className="p-4 bg-blue-50/70 border border-blue-200/80 rounded-2xl space-y-2 text-xs">
               <div className="flex justify-between text-slate-600">
-                <span>Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} piezas)</span>
-                <span className="font-semibold text-slate-900">${subtotal.toFixed(2)}</span>
+                <span>Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} artículos)</span>
+                <span className="font-semibold text-slate-900">{formatMoney(subtotal)}</span>
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-emerald-700 font-bold">
-                  <span>Descuento preferencial ({discountRate}%)</span>
-                  <span>-${discount.toFixed(2)}</span>
+                  <span>Cupón {couponCode} ({couponPercent}%)</span>
+                  <span>-{formatMoney(discount)}</span>
                 </div>
               )}
               <div className="flex justify-between text-slate-600">
-                <span>Costo de Envío</span>
-                <span className="font-semibold text-emerald-700">
-                  {shipping === 0 ? 'CORTESÍA' : `$${shipping.toFixed(2)}`}
-                </span>
+                <span>Envío</span>
+                <span className="font-semibold text-emerald-700">{shipping === 0 ? 'GRATIS' : formatMoney(shipping)}</span>
               </div>
               <div className="flex justify-between text-base font-black text-slate-950 pt-2 border-t border-blue-200">
-                <span>Total a Pagar</span>
-                <span className="text-blue-950 text-lg">${total.toFixed(2)}</span>
+                <span>Total</span>
+                <span className="text-blue-950 text-lg">{formatMoney(total)}</span>
               </div>
+              <p className="text-[10px] text-slate-500">El total final se confirma con los precios y el stock actuales al registrar el pedido.</p>
             </div>
 
-            {/* Submit Button */}
+            <label className="flex items-start gap-2 text-xs text-slate-600 cursor-pointer">
+              <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="mt-0.5 accent-blue-900" />
+              <span>
+                Acepto los{' '}
+                <button type="button" onClick={() => onOpenLegal('terms')} className="text-blue-900 font-semibold underline">Términos y Condiciones</button>
+                , la{' '}
+                <button type="button" onClick={() => onOpenLegal('privacy')} className="text-blue-900 font-semibold underline">Política de Privacidad</button>
+                {' '}y la{' '}
+                <button type="button" onClick={() => onOpenLegal('returns')} className="text-blue-900 font-semibold underline">Política de Envíos y Devoluciones</button>.
+              </span>
+            </label>
+
             <button
               id="confirm-order-submit-button"
               type="submit"
-              disabled={isProcessing}
+              disabled={isProcessing || cart.length === 0}
               className="w-full bg-amber-500 hover:bg-amber-400 text-blue-950 font-black text-sm py-3.5 px-4 rounded-xl shadow-lg shadow-amber-500/25 active:scale-98 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isProcessing ? (
-                <div className="flex items-center gap-2">
+                <>
                   <div className="w-4 h-4 border-2 border-blue-950 border-t-transparent rounded-full animate-spin" />
-                  <span>Procesando pago seguro...</span>
-                </div>
+                  <span>Registrando pedido...</span>
+                </>
               ) : (
                 <>
                   <Lock className="w-4 h-4" />
-                  <span>Confirmar Pedido y Pagar (${total.toFixed(2)})</span>
+                  <span>{paymentMethod === 'paypal' ? 'Continuar al pago' : 'Confirmar pedido'} ({formatMoney(total)})</span>
                 </>
               )}
             </button>
-
           </form>
-        ) : (
-          /* Success Screen */
+        )}
+
+        {step === 'pay' && order && (
+          <div className="p-6 space-y-4">
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2">
+              <Clock className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>
+                Tu pedido <strong>{order.orderNumber}</strong> está reservado. Completa el pago de <strong>{formatMoney(order.total)}</strong> para confirmarlo.
+              </span>
+            </div>
+            {payError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {payError}
+              </div>
+            )}
+            {isProcessing && <p className="text-xs text-slate-500 text-center">Confirmando tu pago...</p>}
+            <div ref={paypalRef} className="min-h-[150px]" />
+            <p className="text-[11px] text-slate-500 text-center">
+              Si cierras esta ventana sin pagar, el pedido quedará pendiente y te contactaremos.
+            </p>
+          </div>
+        )}
+
+        {step === 'success' && order && (
           <div className="p-8 text-center space-y-6">
-            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20 animate-bounce">
+            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-12 h-12 stroke-[2.5]" />
             </div>
 
             <div className="space-y-1">
-              <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-black px-3 py-1 rounded-full uppercase">
-                <Sparkles className="w-3.5 h-3.5 text-amber-600" /> ¡Orden Registrada!
-              </span>
-              <h3 className="text-2xl font-black text-slate-900">
-                ¡Gracias por tu compra en TemaShop!
-              </h3>
+              <h3 className="text-2xl font-black text-slate-900">¡Gracias por tu compra!</h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
-                Hemos recibido tu pedido y nuestro centro de distribución ya está preparando tus piezas con embalaje protegido.
+                {order.paymentStatus === 'pagado'
+                  ? 'Recibimos tu pago. Te contactaremos para coordinar la entrega.'
+                  : 'Recibimos tu pedido. Te contactaremos por teléfono o WhatsApp para confirmar la entrega.'}
               </p>
             </div>
 
-            {/* Order Card details */}
-            {completedOrder && (
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left space-y-3 max-w-lg mx-auto text-xs">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-                  <div>
-                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Número de Orden</span>
-                    <strong className="text-base font-black text-blue-950">{completedOrder.orderNumber}</strong>
-                  </div>
-                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
-                    Confirmado
-                  </span>
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left space-y-3 max-w-lg mx-auto text-xs">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Número de pedido</span>
+                  <strong className="text-base font-black text-blue-950">{order.orderNumber}</strong>
                 </div>
+                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase ${
+                  order.paymentStatus === 'pagado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {order.paymentStatus === 'pagado' ? 'Pagado' : PAYMENT_METHOD_LABELS[order.paymentMethod]}
+                </span>
+              </div>
 
-                <div className="grid grid-cols-2 gap-3 text-slate-600">
-                  <div>
-                    <span className="block text-slate-400 font-medium">Cliente:</span>
-                    <p className="font-semibold text-slate-900">{completedOrder.customerName}</p>
-                  </div>
-                  <div>
-                    <span className="block text-slate-400 font-medium">Total abonado:</span>
-                    <p className="font-black text-blue-950 text-sm">${completedOrder.total.toFixed(2)}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="block text-slate-400 font-medium">Dirección de entrega:</span>
-                    <p className="font-semibold text-slate-900">
-                      {completedOrder.address.street}, {completedOrder.address.city}, CP {completedOrder.address.zipCode}
-                    </p>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="block text-slate-400 font-medium">Fecha estimada de entrega:</span>
-                    <p className="font-bold text-emerald-700 flex items-center gap-1.5 mt-0.5">
-                      <Truck className="w-4 h-4 text-emerald-600" />
-                      {completedOrder.estimatedDeliveryDate}
-                    </p>
-                  </div>
+              <div className="grid grid-cols-2 gap-3 text-slate-600">
+                <div>
+                  <span className="block text-slate-400 font-medium">Cliente:</span>
+                  <p className="font-semibold text-slate-900">{order.customerName}</p>
                 </div>
-
-                {/* Items preview */}
-                <div className="pt-2 border-t border-slate-200">
-                  <span className="text-[11px] font-bold text-slate-700 block mb-1">Artículos incluidos:</span>
-                  <div className="flex gap-2 overflow-x-auto py-1">
-                    {completedOrder.items.map((item, i) => (
-                      <div key={i} className="flex-shrink-0 flex items-center gap-1.5 bg-white border border-slate-200 px-2 py-1 rounded-lg">
-                        <img src={item.imageUrl} alt={item.title} className="w-7 h-7 object-cover rounded" />
-                        <span className="font-bold text-slate-800 text-[11px]">x{item.quantity}</span>
-                      </div>
-                    ))}
-                  </div>
+                <div>
+                  <span className="block text-slate-400 font-medium">Total:</span>
+                  <p className="font-black text-blue-950 text-sm">{formatMoney(order.total)}</p>
+                </div>
+                <div className="col-span-2">
+                  <span className="block text-slate-400 font-medium">Dirección:</span>
+                  <p className="font-semibold text-slate-900">{order.address.street}, {order.address.city}</p>
+                </div>
+                <div className="col-span-2">
+                  <span className="block text-slate-400 font-medium">Entrega estimada:</span>
+                  <p className="font-bold text-emerald-700 flex items-center gap-1.5 mt-0.5">
+                    <Truck className="w-4 h-4 text-emerald-600" />
+                    {DELIVERY_ESTIMATE}
+                  </p>
                 </div>
               </div>
-            )}
-
-            {/* Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto pt-2">
-              <button
-                id="view-placed-orders-button"
-                onClick={() => {
-                  onClose();
-                  onViewOrders();
-                }}
-                className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all"
-              >
-                <Package className="w-4 h-4" />
-                <span>Ver Mis Pedidos</span>
-              </button>
-
-              <button
-                id="continue-shopping-button"
-                onClick={onClose}
-                className="flex-1 bg-blue-900 hover:bg-blue-800 text-amber-400 font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-950/20 border border-amber-500/20"
-              >
-                <span>Seguir Explorando</span>
-              </button>
+              <p className="text-[11px] text-slate-500">Guarda tu número de pedido. Puedes consultarlo en "Mis pedidos" con tu correo {order.customerEmail}.</p>
             </div>
 
+            <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto pt-2">
+              <button id="view-placed-orders-button" onClick={() => { onClose(); onViewOrders(); }}
+                className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2">
+                <Package className="w-4 h-4" />
+                <span>Ver mis pedidos</span>
+              </button>
+              <button id="continue-shopping-button" onClick={onClose}
+                className="flex-1 bg-blue-900 hover:bg-blue-800 text-amber-400 font-bold text-xs py-3 px-4 rounded-xl">
+                Seguir comprando
+              </button>
+            </div>
           </div>
         )}
-
       </div>
     </div>
   );

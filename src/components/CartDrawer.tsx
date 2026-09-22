@@ -11,7 +11,8 @@ import {
   Truck, 
   ShieldCheck 
 } from 'lucide-react';
-import { CartItem } from '../types';
+import { CartItem, StoreSettings } from '../types';
+import { checkCoupon } from '../lib/api';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -20,7 +21,8 @@ interface CartDrawerProps {
   onUpdateQuantity: (productId: string, quantity: number) => void;
   onRemoveItem: (productId: string) => void;
   onClearCart: () => void;
-  onProceedToCheckout: (discountRate: number) => void;
+  onProceedToCheckout: (couponCode: string | null) => void;
+  settings: StoreSettings;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -30,38 +32,42 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onUpdateQuantity,
   onRemoveItem,
   onProceedToCheckout,
+  settings,
 }) => {
   const [couponCode, setCouponCode] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState<{ code: string; percent: number } | null>(null);
   const [couponError, setCouponError] = useState('');
+  const [checkingCoupon, setCheckingCoupon] = useState(false);
 
   if (!isOpen) return null;
 
-  const FREE_SHIPPING_THRESHOLD = 25;
+  const FREE_SHIPPING_THRESHOLD = settings.freeShippingThreshold;
   const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const discountAmount = appliedDiscount ? (subtotal * appliedDiscount.percent) / 100 : 0;
-  const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : 4.99;
+  const discountAmount = appliedDiscount ? Math.round(subtotal * appliedDiscount.percent) / 100 : 0;
+  const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : settings.shippingFee;
   const grandTotal = Math.max(0, subtotal - discountAmount + shippingFee);
 
   const amountNeededForFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
   const freeShippingProgress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     setCouponError('');
     const code = couponCode.trim().toUpperCase();
-
-    if (code === 'TEMASHOP10') {
-      setAppliedDiscount({ code: 'TEMASHOP10', percent: 10 });
-      setCouponCode('');
-    } else if (code === 'FLASH20') {
-      setAppliedDiscount({ code: 'FLASH20', percent: 20 });
-      setCouponCode('');
-    } else if (code === 'VIP50') {
-      setAppliedDiscount({ code: 'VIP50', percent: 50 });
-      setCouponCode('');
-    } else {
-      setCouponError('Cupón inválido. Prueba con "TEMASHOP10" o "FLASH20".');
+    if (!code) return;
+    setCheckingCoupon(true);
+    try {
+      const percent = await checkCoupon(code);
+      if (percent > 0) {
+        setAppliedDiscount({ code, percent });
+        setCouponCode('');
+      } else {
+        setCouponError('Este cupón no es válido o ya expiró.');
+      }
+    } catch (err: any) {
+      setCouponError(err?.message || 'No se pudo validar el cupón.');
+    } finally {
+      setCheckingCoupon(false);
     }
   };
 
@@ -104,7 +110,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 <Truck className="w-4 h-4 text-blue-900" />
                 {amountNeededForFreeShipping === 0
                   ? '¡Excelente! Envío sin costo incluido'
-                  : `Añade $${amountNeededForFreeShipping.toFixed(2)} más para Envío Cortesía`}
+                  : `Añade US$${amountNeededForFreeShipping.toFixed(2)} más para envío gratis`}
               </span>
               <span className="font-bold text-amber-600">{Math.round(freeShippingProgress)}%</span>
             </div>
@@ -209,7 +215,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   <input
                     id="cart-coupon-input"
                     type="text"
-                    placeholder="Código de beneficio (ej: TEMASHOP10)"
+                    placeholder="Código de cupón"
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value)}
                     className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-900 uppercase font-semibold"
@@ -218,9 +224,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 <button
                   id="apply-coupon-button"
                   type="submit"
-                  className="bg-blue-950 hover:bg-blue-900 text-amber-400 px-3 py-2 rounded-xl text-xs font-bold transition-colors border border-amber-500/30"
+                  disabled={checkingCoupon}
+                  className="bg-blue-950 hover:bg-blue-900 text-amber-400 px-3 py-2 rounded-xl text-xs font-bold transition-colors border border-amber-500/30 disabled:opacity-60"
                 >
-                  Aplicar
+                  {checkingCoupon ? '...' : 'Aplicar'}
                 </button>
               </form>
 
@@ -247,43 +254,43 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-200 pt-3">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span className="font-semibold text-slate-900">${subtotal.toFixed(2)}</span>
+                  <span className="font-semibold text-slate-900">US${subtotal.toFixed(2)}</span>
                 </div>
                 {appliedDiscount && (
                   <div className="flex justify-between text-emerald-700 font-medium">
-                    <span>Descuento preferencial ({appliedDiscount.percent}%)</span>
-                    <span>-${discountAmount.toFixed(2)}</span>
+                    <span>Cupón {appliedDiscount.code} ({appliedDiscount.percent}%)</span>
+                    <span>-US${discountAmount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center">
                   <span>Envío estimado</span>
                   {shippingFee === 0 ? (
                     <span className="text-emerald-700 font-bold uppercase text-[11px] bg-emerald-100 px-1.5 py-0.2 rounded">
-                      CORTESÍA
+                      GRATIS
                     </span>
                   ) : (
-                    <span className="font-semibold text-slate-900">${shippingFee.toFixed(2)}</span>
+                    <span className="font-semibold text-slate-900">US${shippingFee.toFixed(2)}</span>
                   )}
                 </div>
                 <div className="flex justify-between text-base font-black text-slate-950 pt-2 border-t border-slate-200">
                   <span>Total a pagar</span>
-                  <span className="text-blue-950">${grandTotal.toFixed(2)}</span>
+                  <span className="text-blue-950">US${grandTotal.toFixed(2)}</span>
                 </div>
               </div>
 
               {/* Checkout Button */}
               <button
                 id="cart-checkout-button"
-                onClick={() => onProceedToCheckout(appliedDiscount?.percent || 0)}
+                onClick={() => onProceedToCheckout(appliedDiscount?.code || null)}
                 className="w-full bg-amber-500 hover:bg-amber-400 text-blue-950 font-black text-sm py-3.5 px-4 rounded-xl shadow-lg shadow-amber-500/25 active:scale-98 transition-all flex items-center justify-center gap-2"
               >
-                <span>Proceder al Pago Seguro</span>
+                <span>Continuar con el pedido</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
               <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400 font-medium">
                 <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                <span>Encriptación segura de 256 bits y garantía TemaShop Elite</span>
+                <span>Conexión segura · Nunca guardamos datos de tarjetas</span>
               </div>
 
             </div>

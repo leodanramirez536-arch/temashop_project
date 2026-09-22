@@ -110,7 +110,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
               {/* Top Action Bar */}
               <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100 text-xs">
                 <span className="text-slate-500 font-medium">
-                  Persistido en tu dispositivo con <strong className="text-slate-800">localStorage</strong>
+                  Guardado en este dispositivo
                 </span>
 
                 <div className="flex items-center gap-2">

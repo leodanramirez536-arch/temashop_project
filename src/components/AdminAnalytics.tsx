@@ -50,7 +50,7 @@ export const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ products, orders
 
     // Map existing orders by date key (YYYY-MM-DD)
     const orderSalesByDate: Record<string, { total: number; count: number }> = {};
-    orders.forEach((ord) => {
+    orders.filter((o) => o.status !== 'cancelado').forEach((ord) => {
       const d = new Date(ord.createdAt);
       const key = d.toISOString().split('T')[0];
       if (!orderSalesByDate[key]) {
@@ -66,11 +66,9 @@ export const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ products, orders
       const key = d.toISOString().split('T')[0];
       const dayLabel = d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
 
-      // Baseline reference for store activity + actual recorded user orders
-      const seedRevenue = Math.round(
-        (120 + Math.sin(i * 1.5) * 45 + ((i * 17) % 35)) * 100
-      ) / 100;
-      const seedOrders = Math.max(1, Math.round(2 + Math.cos(i) * 1.5 + (i % 3)));
+      // Solo pedidos reales
+      const seedRevenue = 0;
+      const seedOrders = 0;
 
       const realOrders = orderSalesByDate[key];
       const addedRevenue = realOrders ? realOrders.total : 0;
@@ -78,7 +76,7 @@ export const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ products, orders
 
       const totalVentas = Number((seedRevenue + addedRevenue).toFixed(2));
       const pedidos = seedOrders + addedCount;
-      const ticketPromedio = Number((totalVentas / pedidos).toFixed(2));
+      const ticketPromedio = pedidos > 0 ? Number((totalVentas / pedidos).toFixed(2)) : 0;
 
       result.push({
         date: dayLabel,
@@ -96,11 +94,11 @@ export const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ products, orders
   const categoryPerformanceData = useMemo(() => {
     // Collect order items by category
     const orderCategorySales: Record<string, { revenue: number; units: number }> = {};
-    orders.forEach((ord) => {
+    orders.filter((o) => o.status !== 'cancelado').forEach((ord) => {
       ord.items.forEach((item) => {
         // Find product category
         const prod = products.find((p) => p.id === item.id || p.title === item.title);
-        const cat = prod ? prod.category : 'Tecnología';
+        const cat = prod ? prod.category : 'Otros';
         if (!orderCategorySales[cat]) {
           orderCategorySales[cat] = { revenue: 0, units: 0 };
         }
@@ -113,8 +111,8 @@ export const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ products, orders
       const catProducts = products.filter((p) => p.category.toLowerCase() === cat.toLowerCase());
       
       // Calculate accumulated product sales volume
-      const baseProductUnits = catProducts.reduce((sum, p) => sum + (p.salesCount || 120), 0);
-      const baseProductRevenue = catProducts.reduce((sum, p) => sum + ((p.salesCount || 120) * p.price), 0);
+      const baseProductUnits = 0;
+      const baseProductRevenue = 0;
 
       const added = orderCategorySales[cat] || { revenue: 0, units: 0 };
 

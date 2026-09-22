@@ -78,15 +78,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="bg-amber-500 text-blue-950 px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider flex items-center gap-1">
               <Crown className="w-3 h-3 text-blue-950 fill-current" /> Selección Premium
             </span>
-            <span className="hidden sm:inline text-blue-100">Colecciones exclusivas con hasta 70% de beneficio. Envío cortesía en pedidos sobre $25</span>
-            <span className="sm:hidden text-[11px] text-blue-100">Envío sin costo &gt; $25 | Cupones VIP</span>
+            <span className="hidden sm:inline text-blue-100">Envío gratis en pedidos desde US$25 · Paga con PayPal o contra entrega</span>
+            <span className="sm:hidden text-[11px] text-blue-100">Envío gratis desde US$25</span>
           </div>
           <div className="flex items-center gap-4 text-[11px]">
             <span className="hidden md:inline bg-blue-900/80 px-2.5 py-0.5 rounded border border-blue-800 text-blue-200">
               Cupón 10% OFF: <strong className="text-amber-400">TEMASHOP10</strong>
             </span>
             <span className="flex items-center gap-1 text-blue-200">
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" /> Compra Garantizada
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" /> Pago seguro
             </span>
           </div>
         </div>
@@ -125,7 +125,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               </div>
               <p className="text-[10px] text-gray-400 font-medium hidden sm:block -mt-1">
-                Tienda Departamental & Mercancía
+                Tienda en línea
               </p>
             </div>
           </div>

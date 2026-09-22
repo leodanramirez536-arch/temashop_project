@@ -126,17 +126,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {product.title}
           </h3>
 
-          {/* Ratings & Sales */}
-          <div className="flex items-center gap-1.5 mt-1.5 text-xs">
-            <div className="flex items-center text-amber-500">
-              <Star className="w-3.5 h-3.5 fill-current" />
-              <span className="ml-1 font-bold text-slate-900 text-xs">{product.rating.toFixed(1)}</span>
+          {/* Calificaciones y ventas reales (solo si existen) */}
+          {(product.reviewsCount > 0 || (product.salesCount || 0) > 0) && (
+            <div className="flex items-center gap-1.5 mt-1.5 text-xs">
+              {product.reviewsCount > 0 && (
+                <div className="flex items-center text-amber-500">
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <span className="ml-1 font-bold text-slate-900 text-xs">{product.rating.toFixed(1)}</span>
+                </div>
+              )}
+              {(product.salesCount || 0) > 0 && (
+                <span className="text-[11px] text-slate-500">{product.salesCount} vendidos</span>
+              )}
             </div>
-            <span className="text-slate-300">|</span>
-            <span className="text-[11px] text-slate-500 transition-colors duration-200 group-hover:text-slate-700">
-              {product.salesCount ? `${product.salesCount.toLocaleString()}+ pedidos` : `${product.reviewsCount} opiniones`}
-            </span>
-          </div>
+          )}
         </div>
 
         {/* Pricing & Stock Section */}
@@ -156,7 +159,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {product.stock <= 5 && product.stock > 0 && (
             <p className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping inline-block" />
-              ¡Solo {product.stock} unidades en catálogo!
+              ¡Solo quedan {product.stock}!
             </p>
           )}
 

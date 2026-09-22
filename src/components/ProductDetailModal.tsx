@@ -13,6 +13,7 @@ import {
   Heart
 } from 'lucide-react';
 import { Product } from '../types';
+import { RETURN_DAYS } from '../config';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -125,18 +126,25 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 {product.title}
               </h2>
 
-              {/* Rating & Social proof */}
               <div className="flex items-center gap-2 mt-2 text-sm">
-                <div className="flex items-center text-amber-500">
-                  <Star className="w-4 h-4 fill-current" />
-                  <span className="ml-1 font-bold text-slate-900">{product.rating.toFixed(1)}</span>
-                </div>
-                <span className="text-slate-300">•</span>
-                <span className="text-xs text-slate-500">
-                  {product.salesCount ? `${product.salesCount.toLocaleString()} pedidos` : `${product.reviewsCount} opiniones`}
+                {product.reviewsCount > 0 && (
+                  <>
+                    <div className="flex items-center text-amber-500">
+                      <Star className="w-4 h-4 fill-current" />
+                      <span className="ml-1 font-bold text-slate-900">{product.rating.toFixed(1)}</span>
+                    </div>
+                    <span className="text-slate-300">•</span>
+                  </>
+                )}
+                {(product.salesCount || 0) > 0 && (
+                  <>
+                    <span className="text-xs text-slate-500">{product.salesCount} vendidos</span>
+                    <span className="text-slate-300">•</span>
+                  </>
+                )}
+                <span className={`text-xs font-semibold ${product.stock > 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                  {product.stock > 0 ? `Disponible: ${product.stock}` : 'Agotado'}
                 </span>
-                <span className="text-slate-300">•</span>
-                <span className="text-xs font-semibold text-emerald-700">Stock: {product.stock} unidades</span>
               </div>
 
               {/* Price display */}
@@ -223,15 +231,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500 font-medium">
                 <div className="flex items-center gap-1">
                   <Truck className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Envío Prioritario</span>
+                  <span>Envío a domicilio</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
-                  <span>90 Días Retorno</span>
+                  <span>Devoluciones {RETURN_DAYS} días</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Transacción Segura</span>
+                  <span>Pago seguro</span>
                 </div>
               </div>
 

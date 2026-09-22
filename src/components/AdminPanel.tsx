@@ -21,14 +21,19 @@ import {
   Glasses,
   BarChart3
 } from 'lucide-react';
-import { Product, User, Order } from '../types';
+import { Product, User, Order, OrderStatus, PaymentStatus } from '../types';
 import { AdminAnalytics } from './AdminAnalytics';
-import { 
-  addProductToStorage, 
-  updateProductInStorage, 
-  deleteProductFromStorage, 
-  resetProductsToDefault,
-} from '../utils/storage';
+import {
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  uploadProductImage,
+  updateOrder,
+  ORDER_STATUS_LABELS,
+  PAYMENT_STATUS_LABELS,
+  PAYMENT_METHOD_LABELS,
+} from '../lib/api';
+import { formatMoney } from '../config';
 
 interface AdminPanelProps {
   isOpen: boolean;
@@ -37,8 +42,39 @@ interface AdminPanelProps {
   products: Product[];
   orders: Order[];
   onProductsUpdated: (updatedProducts: Product[]) => void;
+  onOrderUpdated: (order: Order) => void;
+  onRefresh: () => void;
   onOpenAuthForAdmin: () => void;
 }
+
+// Subir foto desde la computadora o el celular
+const ImageUploader: React.FC<{ onUploaded: (url: string) => void; onError: (msg: string) => void }> = ({ onUploaded, onError }) => {
+  const [uploading, setUploading] = useState(false);
+  return (
+    <label className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer border border-blue-900 text-blue-900 hover:bg-blue-50 ${uploading ? 'opacity-60 pointer-events-none' : ''}`}>
+      <ImageIcon className="w-3.5 h-3.5" />
+      {uploading ? 'Subiendo foto...' : 'Subir foto'}
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (!file) return;
+          setUploading(true);
+          try {
+            onUploaded(await uploadProductImage(file));
+          } catch (err: any) {
+            onError(err?.message || 'No se pudo subir la foto.');
+          } finally {
+            setUploading(false);
+          }
+        }}
+      />
+    </label>
+  );
+};
 
 const CATEGORY_OPTIONS = [
   'Tecnología',
@@ -49,16 +85,6 @@ const CATEGORY_OPTIONS = [
   'Accesorios'
 ];
 
-const PRESET_SAMPLE_IMAGES = [
-  { label: 'Smartwatch AMOLED', category: 'Tecnología', url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80' },
-  { label: 'Auriculares ANC', category: 'Tecnología', url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80' },
-  { label: 'Zapatillas Air Sport', category: 'Moda y Calzado', url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80' },
-  { label: 'Freidora de Aire XL', category: 'Hogar y Cocina', url: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=800&q=80' },
-  { label: 'Cafetera Italiana', category: 'Hogar y Cocina', url: 'https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?auto=format&fit=crop&w=800&q=80' },
-  { label: 'Suero Vitamina C', category: 'Belleza y Cuidado', url: 'https://images.unsplash.com/photo-1608248597359-0524458f4a13?auto=format&fit=crop&w=800&q=80' },
-  { label: 'Botella Térmica', category: 'Deportes y Aire Libre', url: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=800&q=80' },
-  { label: 'Gafas Aviador', category: 'Accesorios', url: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=800&q=80' },
-];
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   isOpen,
@@ -67,6 +93,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   products,
   orders,
   onProductsUpdated,
+  onOrderUpdated,
+  onRefresh,
   onOpenAuthForAdmin,
 }) => {
   const [mainTab, setMainTab] = useState<'inventory' | 'create' | 'orders' | 'analytics'>('inventory');
@@ -80,9 +108,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [price, setPrice] = useState('');
   const [originalPrice, setOriginalPrice] = useState('');
   const [stock, setStock] = useState('20');
-  const [imageUrl, setImageUrl] = useState(PRESET_SAMPLE_IMAGES[0].url);
-  const [isFlashDeal, setIsFlashDeal] = useState(true);
-  const [badge, setBadge] = useState('EXCLUSIVO');
+  const [imageUrl, setImageUrl] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [orderFilter, setOrderFilter] = useState<'activos' | 'todos'>('activos');
+  const [isFlashDeal, setIsFlashDeal] = useState(false);
+  const [badge, setBadge] = useState('');
 
   // Edit Modal State
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -101,8 +131,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     ? Math.round(((numOrigPrice - numPrice) / numOrigPrice) * 100)
     : 0;
 
-  // Handler for creating a new product
-  const handleCreateProduct = (e: React.FormEvent) => {
+  const notify = (message: string, type: 'success' | 'error' = 'success') => {
+    setNotification({ message, type });
+    if (type === 'success') setTimeout(() => setNotification(null), 3500);
+  };
+
+  const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setNotification(null);
 
@@ -111,94 +145,96 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const stockQty = parseInt(stock, 10);
 
     if (!title.trim() || isNaN(salePrice) || salePrice <= 0) {
-      setNotification({
-        message: 'Por favor ingresa un título válido y un precio de venta mayor a cero.',
-        type: 'error',
-      });
+      notify('Escribe un nombre y un precio de venta mayor a cero.', 'error');
+      return;
+    }
+    if (!imageUrl.trim()) {
+      notify('Sube una foto del producto.', 'error');
       return;
     }
 
-    const newProduct = addProductToStorage({
-      title: title.trim(),
-      description: description.trim() || 'Pieza oficial con garantía de calidad y entrega prioritaria en TemaShop.',
-      category,
-      price: salePrice,
-      originalPrice: Math.max(salePrice, prevPrice),
-      stock: isNaN(stockQty) ? 10 : stockQty,
-      imageUrl: imageUrl.trim() || PRESET_SAMPLE_IMAGES[0].url,
-      rating: 4.8 + Number((Math.random() * 0.2).toFixed(1)),
-      reviewsCount: Math.floor(40 + Math.random() * 350),
-      salesCount: Math.floor(80 + Math.random() * 800),
-      isFlashDeal,
-      badge: badge.trim() || undefined,
-    });
-
-    const updated = [newProduct, ...products];
-    onProductsUpdated(updated);
-
-    // Reset Form
-    setTitle('');
-    setDescription('');
-    setPrice('');
-    setOriginalPrice('');
-    setStock('20');
-    setNotification({
-      message: `¡Producto "${newProduct.title}" agregado exitosamente al inventario de ${newProduct.category} y sincronizado en localStorage!`,
-      type: 'success',
-    });
-
-    // Switch to inventory view to immediately show the new item
-    setTimeout(() => {
+    setSaving(true);
+    try {
+      const newProduct = await createProduct({
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        price: salePrice,
+        originalPrice: Math.max(salePrice, prevPrice),
+        stock: isNaN(stockQty) ? 0 : stockQty,
+        imageUrl: imageUrl.trim(),
+        isFlashDeal,
+        badge: badge.trim() || undefined,
+      });
+      onProductsUpdated([newProduct, ...products]);
+      setTitle('');
+      setDescription('');
+      setPrice('');
+      setOriginalPrice('');
+      setStock('20');
+      setImageUrl('');
+      setBadge('');
+      notify(`Producto "${newProduct.title}" publicado en la tienda.`);
       setMainTab('inventory');
       setSelectedCategoryTab(newProduct.category);
-    }, 1200);
+    } catch (err: any) {
+      notify(err?.message || 'No se pudo guardar el producto.', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // Handler for saving edited product
-  const handleSaveEditProduct = (e: React.FormEvent) => {
+  const handleSaveEditProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct) return;
-
     if (!editingProduct.title.trim() || editingProduct.price <= 0) {
-      alert('Por favor especifica un título y un precio válido.');
+      notify('Escribe un nombre y un precio válido.', 'error');
       return;
     }
-
-    const updatedList = updateProductInStorage(editingProduct);
-    onProductsUpdated(updatedList);
-    setEditingProduct(null);
-    setNotification({
-      message: `Producto "${editingProduct.title}" actualizado con éxito en la tienda.`,
-      type: 'success',
-    });
-    setTimeout(() => setNotification(null), 3000);
-  };
-
-  // Handler for deleting a product
-  const handleDeleteProduct = (productId: string, productTitle: string) => {
-    if (window.confirm(`¿Estás seguro de que deseas eliminar permanentemente "${productTitle}" del inventario?`)) {
-      const updated = deleteProductFromStorage(productId);
-      onProductsUpdated(updated);
-      setNotification({
-        message: `Producto "${productTitle}" eliminado correctamente de la tienda.`,
-        type: 'success',
-      });
-      setTimeout(() => setNotification(null), 3000);
+    setSaving(true);
+    try {
+      const saved = await updateProduct(editingProduct);
+      onProductsUpdated(products.map((p) => (p.id === saved.id ? saved : p)));
+      setEditingProduct(null);
+      notify(`Producto "${saved.title}" actualizado.`);
+    } catch (err: any) {
+      notify(err?.message || 'No se pudo actualizar el producto.', 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Handler to reset catalog to defaults
-  const handleResetCatalog = () => {
-    if (window.confirm('¿Deseas restaurar el catálogo a los productos originales de TemaShop?')) {
-      const defaults = resetProductsToDefault();
-      onProductsUpdated(defaults);
-      setNotification({
-        message: 'Catálogo de mercancía restablecido exitosamente.',
-        type: 'success',
-      });
-      setTimeout(() => setNotification(null), 3000);
+  const handleDeleteProduct = async (productId: string, productTitle: string) => {
+    if (!window.confirm(`¿Quitar "${productTitle}" de la tienda?`)) return;
+    try {
+      await deleteProduct(productId);
+      onProductsUpdated(products.filter((p) => p.id !== productId));
+      notify(`Producto "${productTitle}" retirado de la tienda.`);
+    } catch (err: any) {
+      notify(err?.message || 'No se pudo quitar el producto.', 'error');
     }
   };
+
+  const handleOrderChange = async (
+    order: Order,
+    changes: { status?: OrderStatus; paymentStatus?: PaymentStatus }
+  ) => {
+    if (changes.status === 'cancelado' && !window.confirm(`¿Cancelar el pedido ${order.orderNumber}? El stock se devolverá al inventario.`)) {
+      return;
+    }
+    try {
+      const updated = await updateOrder(order.id, changes);
+      onOrderUpdated(updated);
+      if (changes.status === 'cancelado') onRefresh();
+      notify(`Pedido ${updated.orderNumber} actualizado.`);
+    } catch (err: any) {
+      notify(err?.message || 'No se pudo actualizar el pedido.', 'error');
+    }
+  };
+
+  const visibleOrders = orders.filter((o) =>
+    orderFilter === 'todos' ? true : o.status !== 'entregado' && o.status !== 'cancelado'
+  );
 
   // Filter products by selected category tab and search query
   const filteredProducts = products.filter((p) => {
@@ -387,7 +423,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 }`}
               >
                 <TrendingUp className="w-4 h-4" />
-                <span>Registro de Ventas ({orders.length})</span>
+                <span>Pedidos ({orders.filter((o) => o.status !== 'entregado' && o.status !== 'cancelado').length})</span>
               </button>
             </div>
 
@@ -475,12 +511,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       </button>
 
                       <button
-                        onClick={handleResetCatalog}
-                        className="text-slate-500 hover:text-red-600 border border-slate-200 px-3 py-2 rounded-xl text-xs font-medium hover:bg-red-50 transition-colors flex items-center gap-1"
-                        title="Restablecer catálogo por defecto"
+                        onClick={onRefresh}
+                        className="text-slate-500 hover:text-blue-900 border border-slate-200 px-3 py-2 rounded-xl text-xs font-medium hover:bg-slate-50 transition-colors flex items-center gap-1"
+                        title="Actualizar datos"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Restaurar</span>
+                        <span className="hidden sm:inline">Actualizar</span>
                       </button>
                     </div>
                   </div>
@@ -597,7 +633,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="p-3.5 bg-blue-50/80 border border-blue-200/80 rounded-2xl flex items-center gap-2.5 text-xs text-blue-950">
                     <Sparkles className="w-5 h-5 text-amber-500 flex-shrink-0" />
                     <span>
-                      Completa los datos para registrar mercancía. El porcentaje de beneficio se calcula de forma automática y el producto se reflejará al instante en la tienda mediante <strong>localStorage</strong>.
+                      Completa los datos para registrar mercancía. El porcentaje de beneficio se calcula de forma automática y el producto aparecerá al instante en la tienda.
                     </span>
                   </div>
 
@@ -727,45 +763,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
 
-                  {/* Image URL and Presets */}
+                  {/* Foto del producto */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      URL de Imagen del Producto *
+                      Foto del producto *
                     </label>
-                    <input
-                      id="new-product-image"
-                      type="url"
-                      required
-                      placeholder="https://images.unsplash.com/..."
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-mono focus:bg-white focus:ring-2 focus:ring-blue-900 focus:outline-none"
-                    />
-
-                    {/* Presets in 1-Click */}
-                    <div className="mt-2">
-                      <span className="text-[11px] text-slate-400 font-semibold block mb-1">
-                        O selecciona una imagen muestra predeterminada en 1 clic:
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {PRESET_SAMPLE_IMAGES.map((preset) => (
-                          <button
-                            key={preset.label}
-                            type="button"
-                            onClick={() => {
-                              setImageUrl(preset.url);
-                              setCategory(preset.category);
-                            }}
-                            className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all ${
-                              imageUrl === preset.url
-                                ? 'bg-blue-900 text-amber-300'
-                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                            }`}
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
-                      </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <ImageUploader onUploaded={setImageUrl} onError={(m) => notify(m, 'error')} />
+                      <span className="text-[11px] text-slate-400">o pega un enlace:</span>
+                      <input
+                        id="new-product-image"
+                        type="url"
+                        placeholder="https://..."
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        className="flex-1 min-w-[180px] px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-mono focus:bg-white focus:ring-2 focus:ring-blue-900 focus:outline-none"
+                      />
                     </div>
 
                     {/* Image Preview Box */}
@@ -775,16 +788,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           src={imageUrl}
                           alt="Vista previa"
                           className="w-14 h-14 object-cover rounded-xl border border-slate-200"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = PRESET_SAMPLE_IMAGES[0].url;
-                          }}
                         />
                         <div className="text-[11px] text-slate-500">
                           <strong className="text-slate-900 block flex items-center gap-1">
                             <ImageIcon className="w-3.5 h-3.5 text-blue-900" />
-                            Vista Previa de Imagen Sincronizada
+                            Vista previa
                           </strong>
-                          <span>Apta para catálogo responsive y zoom interactivo</span>
+                          <span>Así se verá en la tienda</span>
                         </div>
                       </div>
                     )}
@@ -824,56 +834,94 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <button
                     id="submit-create-product-btn"
                     type="submit"
+                    disabled={saving}
                     className="w-full bg-blue-900 hover:bg-blue-800 text-amber-400 font-black text-sm py-3.5 px-4 rounded-xl shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 border border-amber-500/20"
                   >
                     <PlusCircle className="w-5 h-5" />
-                    <span>Guardar y Publicar en TemaShop</span>
+                    <span>{saving ? 'Guardando...' : 'Guardar y publicar'}</span>
                   </button>
                 </form>
               )}
 
-              {/* TAB 3: REGISTRO DE VENTAS */}
+              {/* TAB 3: PEDIDOS */}
               {mainTab === 'orders' && (
                 <div className="space-y-4">
-                  <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Órdenes Generadas en el Sistema
-                  </h3>
-                  {orders.length === 0 ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Pedidos</h3>
+                    <div className="flex gap-1 text-[11px] font-bold">
+                      {(['activos', 'todos'] as const).map((f) => (
+                        <button key={f} onClick={() => setOrderFilter(f)}
+                          className={`px-2.5 py-1 rounded-lg ${orderFilter === f ? 'bg-blue-900 text-amber-300' : 'bg-slate-100 text-slate-600'}`}>
+                          {f === 'activos' ? 'Por atender' : 'Todos'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {visibleOrders.length === 0 ? (
                     <div className="p-8 text-center text-xs text-slate-500 bg-slate-50 rounded-2xl border border-slate-200">
-                      No hay compras registradas todavía. Simula un proceso de pago en la tienda para ver aquí los datos en tiempo real.
+                      {orders.length === 0 ? 'Todavía no hay pedidos. Aparecerán aquí en cuanto un cliente compre.' : 'No hay pedidos por atender.'}
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {orders.map((ord) => (
-                        <div
-                          key={ord.id}
-                          className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-2"
-                        >
-                          <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                      {visibleOrders.map((ord) => (
+                        <div key={ord.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
                             <div>
                               <strong className="text-blue-950 font-black text-sm">{ord.orderNumber}</strong>
                               <span className="text-slate-400 ml-2">
-                                {new Date(ord.createdAt).toLocaleDateString()}
+                                {new Date(ord.createdAt).toLocaleString('es-DO', { dateStyle: 'medium', timeStyle: 'short' })}
                               </span>
                             </div>
-                            <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px] uppercase">
-                              {ord.status}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <select
+                                value={ord.status}
+                                onChange={(e) => handleOrderChange(ord, { status: e.target.value as OrderStatus })}
+                                disabled={ord.status === 'cancelado'}
+                                className="px-2 py-1 rounded-lg border border-slate-300 bg-white font-bold text-[11px]"
+                              >
+                                {(Object.keys(ORDER_STATUS_LABELS) as OrderStatus[]).map((st) => (
+                                  <option key={st} value={st}>{ORDER_STATUS_LABELS[st]}</option>
+                                ))}
+                              </select>
+                              <select
+                                value={ord.paymentStatus}
+                                onChange={(e) => handleOrderChange(ord, { paymentStatus: e.target.value as PaymentStatus })}
+                                className={`px-2 py-1 rounded-lg border font-bold text-[11px] ${ord.paymentStatus === 'pagado' ? 'border-emerald-400 bg-emerald-50 text-emerald-800' : 'border-slate-300 bg-white'}`}
+                              >
+                                {(Object.keys(PAYMENT_STATUS_LABELS) as PaymentStatus[]).map((st) => (
+                                  <option key={st} value={st}>{PAYMENT_STATUS_LABELS[st]}</option>
+                                ))}
+                              </select>
+                            </div>
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-slate-600">
                             <div>
-                              <span className="text-slate-400 block text-[10px]">Cliente:</span>
-                              <strong>{ord.customerName}</strong> ({ord.customerEmail})
+                              <span className="text-slate-400 block text-[10px]">Cliente</span>
+                              <strong className="text-slate-900">{ord.customerName}</strong>
+                              <div>{ord.customerEmail}</div>
+                              <a href={`tel:${ord.customerPhone}`} className="text-blue-900 font-semibold">{ord.customerPhone}</a>
                             </div>
                             <div>
-                              <span className="text-slate-400 block text-[10px]">Ciudad:</span>
-                              <span>{ord.address.city}, {ord.address.street}</span>
+                              <span className="text-slate-400 block text-[10px]">Entrega</span>
+                              <span>{ord.address.street}, {ord.address.city}{ord.address.state ? `, ${ord.address.state}` : ''}</span>
+                              {ord.address.notes && <div className="italic text-slate-500">"{ord.address.notes}"</div>}
                             </div>
                             <div>
-                              <span className="text-slate-400 block text-[10px]">Monto Total:</span>
-                              <strong className="text-blue-950 text-sm">${ord.total.toFixed(2)}</strong>
+                              <span className="text-slate-400 block text-[10px]">Pago</span>
+                              <div>{PAYMENT_METHOD_LABELS[ord.paymentMethod] || ord.paymentMethod}</div>
+                              <strong className="text-blue-950 text-sm">{formatMoney(ord.total)}</strong>
+                              {ord.discount > 0 && <div className="text-emerald-700">Cupón {ord.couponCode}: -{formatMoney(ord.discount)}</div>}
                             </div>
+                          </div>
+
+                          <div className="bg-white rounded-xl border border-slate-200 p-2 space-y-1">
+                            {ord.items.map((it, i) => (
+                              <div key={i} className="flex justify-between gap-2">
+                                <span className="truncate">{it.quantity} × {it.title}</span>
+                                <span className="font-semibold flex-shrink-0">{formatMoney(it.price * it.quantity)}</span>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       ))}
@@ -972,12 +1020,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">URL de Imagen</label>
+                  <label className="block font-bold text-slate-700 mb-1">Foto</label>
+                  <div className="flex items-center gap-2">
+                    {editingProduct.imageUrl && (
+                      <img src={editingProduct.imageUrl} alt="" className="w-12 h-12 object-cover rounded-lg border border-slate-200" />
+                    )}
+                    <ImageUploader
+                      onUploaded={(url) => setEditingProduct({ ...editingProduct, imageUrl: url })}
+                      onError={(m) => notify(m, 'error')}
+                    />
+                  </div>
                   <input
                     type="url"
                     value={editingProduct.imageUrl}
                     onChange={(e) => setEditingProduct({ ...editingProduct, imageUrl: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-[11px]"
+                    className="mt-2 w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-[11px]"
                   />
                 </div>
 
