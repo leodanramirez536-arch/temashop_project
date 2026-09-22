@@ -11,8 +11,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { User } from '../types';
-import { authenticateUser, registerUser, DEFAULT_ADMIN, DEFAULT_ADMIN_PASSWORD } from '../utils/storage';
-
+import { authenticateUser, registerUser } from '../utils/storage';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
