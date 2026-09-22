@@ -102,7 +102,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     : 0;
 
   // Handler for creating a new product
-  const handleCreateProduct = (e: React.FormEvent) => {
+  const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setNotification(null);
 
@@ -118,7 +118,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
 
-    const newProduct = addProductToStorage({
+    let newProduct: Product;
+    try {
+    newProduct = await addProductToStorage({
       title: title.trim(),
       description: description.trim() || 'Pieza oficial con garantía de calidad y entrega prioritaria en TemaShop.',
       category,
@@ -132,6 +134,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       isFlashDeal,
       badge: badge.trim() || undefined,
     });
+    } catch (err) {
+      setNotification({ message: `No se pudo guardar: ${(err as Error).message}`, type: 'error' });
+      return;
+    }
 
     const updated = [newProduct, ...products];
     onProductsUpdated(updated);
@@ -143,7 +149,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setOriginalPrice('');
     setStock('20');
     setNotification({
-      message: `¡Producto "${newProduct.title}" agregado exitosamente al inventario de ${newProduct.category} y sincronizado en localStorage!`,
+      message: `¡Producto "${newProduct.title}" agregado exitosamente al inventario de ${newProduct.category} y guardado en la base de datos!`,
       type: 'success',
     });
 
@@ -155,7 +161,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // Handler for saving edited product
-  const handleSaveEditProduct = (e: React.FormEvent) => {
+  const handleSaveEditProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct) return;
 
@@ -164,7 +170,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
 
-    const updatedList = updateProductInStorage(editingProduct);
+    let updatedList: Product[];
+    try {
+      updatedList = await updateProductInStorage(editingProduct);
+    } catch (err) {
+      setNotification({ message: `No se pudo actualizar: ${(err as Error).message}`, type: 'error' });
+      return;
+    }
     onProductsUpdated(updatedList);
     setEditingProduct(null);
     setNotification({
@@ -175,9 +187,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // Handler for deleting a product
-  const handleDeleteProduct = (productId: string, productTitle: string) => {
+  const handleDeleteProduct = async (productId: string, productTitle: string) => {
     if (window.confirm(`¿Estás seguro de que deseas eliminar permanentemente "${productTitle}" del inventario?`)) {
-      const updated = deleteProductFromStorage(productId);
+      let updated: Product[];
+      try {
+        updated = await deleteProductFromStorage(productId);
+      } catch (err) {
+        setNotification({ message: `No se pudo eliminar: ${(err as Error).message}`, type: 'error' });
+        return;
+      }
       onProductsUpdated(updated);
       setNotification({
         message: `Producto "${productTitle}" eliminado correctamente de la tienda.`,
@@ -188,9 +206,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // Handler to reset catalog to defaults
-  const handleResetCatalog = () => {
+  const handleResetCatalog = async () => {
     if (window.confirm('¿Deseas restaurar el catálogo a los productos originales de TemaShop?')) {
-      const defaults = resetProductsToDefault();
+      let defaults: Product[];
+      try {
+        defaults = await resetProductsToDefault();
+      } catch (err) {
+        setNotification({ message: `No se pudo restaurar: ${(err as Error).message}`, type: 'error' });
+        return;
+      }
       onProductsUpdated(defaults);
       setNotification({
         message: 'Catálogo de mercancía restablecido exitosamente.',
@@ -603,7 +627,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="p-3.5 bg-blue-50/80 border border-blue-200/80 rounded-2xl flex items-center gap-2.5 text-xs text-blue-950">
                     <Sparkles className="w-5 h-5 text-amber-500 flex-shrink-0" />
                     <span>
-                      Completa los datos para registrar mercancía. El porcentaje de beneficio se calcula de forma automática y el producto se reflejará al instante en la tienda mediante <strong>localStorage</strong>.
+                      Completa los datos para registrar mercancía. El porcentaje de beneficio se calcula de forma automática y el producto se reflejará al instante en la tienda para <strong>todos los clientes</strong>.
                     </span>
                   </div>
 

@@ -41,12 +41,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setErrorMessage('');
     setSuccessMessage('');
-
-    const result = authenticateUser(loginEmail, loginPassword);
+    setLoading(true);
+    const result = await authenticateUser(loginEmail, loginPassword);
+    setLoading(false);
     if (result.success && result.user) {
       setSuccessMessage(`¡Bienvenido de nuevo, ${result.user.name}!`);
       setTimeout(() => {
@@ -58,8 +62,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setErrorMessage('');
     setSuccessMessage('');
 
@@ -68,7 +73,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
-    const result = registerUser(registerName, registerEmail, registerPassword);
+    setLoading(true);
+    const result = await registerUser(registerName, registerEmail, registerPassword);
+    setLoading(false);
+    if (result.success && result.needsConfirmation) {
+      setSuccessMessage('¡Cuenta creada! Te enviamos un correo: abre el enlace para confirmarla y luego inicia sesión.');
+      setMode('login');
+      setLoginEmail(registerEmail);
+      return;
+    }
     if (result.success && result.user) {
       setSuccessMessage('¡Cuenta creada con éxito! Iniciando sesión...');
       setTimeout(() => {
@@ -206,9 +219,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <button
                 id="submit-login-button"
                 type="submit"
-                className="w-full mt-2 bg-blue-900 hover:bg-blue-800 text-amber-300 font-bold text-xs py-3 px-4 rounded-xl shadow-md shadow-blue-950/20 active:scale-98 transition-all flex items-center justify-center gap-1.5 border border-amber-500/20"
+                disabled={loading}
+                className="w-full mt-2 disabled:opacity-60 bg-blue-900 hover:bg-blue-800 text-amber-300 font-bold text-xs py-3 px-4 rounded-xl shadow-md shadow-blue-950/20 active:scale-98 transition-all flex items-center justify-center gap-1.5 border border-amber-500/20"
               >
-                <span>Entrar a mi Cuenta</span>
+                <span>{loading ? 'Entrando...' : 'Entrar a mi Cuenta'}</span>
               </button>
             </form>
           ) : (
@@ -278,9 +292,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <button
                 id="submit-register-button"
                 type="submit"
-                className="w-full mt-2 bg-amber-500 hover:bg-amber-400 text-blue-950 font-black text-xs py-3 px-4 rounded-xl shadow-md active:scale-98 transition-all flex items-center justify-center gap-1.5"
+                disabled={loading}
+                className="w-full mt-2 disabled:opacity-60 bg-amber-500 hover:bg-amber-400 text-blue-950 font-black text-xs py-3 px-4 rounded-xl shadow-md active:scale-98 transition-all flex items-center justify-center gap-1.5"
               >
-                <span>Registrarme y Obtener Beneficios</span>
+                <span>{loading ? 'Creando cuenta...' : 'Registrarme y Obtener Beneficios'}</span>
               </button>
             </form>
           )}
@@ -288,7 +303,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <div className="pt-2 text-center">
             <span className="text-[11px] text-slate-400 flex items-center justify-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              Tus datos se guardan de forma local y privada en tu navegador.
+              Tu cuenta está protegida con conexión segura.
             </span>
           </div>
 

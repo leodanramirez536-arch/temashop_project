@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, CheckCircle2, Truck, CreditCard } from 'lucide-react';
 import { CartItem, Order, User } from '../types';
+import type { PlaceOrderInput } from '../utils/storage';
 import { SHIPPING_COST, SHIPPING_FREE_FROM } from './CartDrawer';
 
 interface CheckoutModalProps {
@@ -8,7 +9,7 @@ interface CheckoutModalProps {
   onClose: () => void;
   items: CartItem[];
   currentUser: User | null;
-  onPlaceOrder: (order: Order) => void;
+  onPlaceOrder: (input: PlaceOrderInput) => Promise<Order>;
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, items, currentUser, onPlaceOrder }) => {
@@ -20,6 +21,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, i
   const [paymentMethod, setPaymentMethod] = useState('Pago contra entrega');
   const [error, setError] = useState('');
   const [placed, setPlaced] = useState<Order | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
@@ -33,34 +35,29 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, i
     onClose();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     if (!fullName.trim() || !email.trim() || !street.trim() || !city.trim() || !phone.trim()) {
       setError('Completa todos los campos de envío.');
       return;
     }
-    const order: Order = {
-      id: `ord-${Date.now()}`,
-      orderNumber: `TS-${Math.floor(100000 + Math.random() * 900000)}`,
-      createdAt: new Date().toISOString(),
-      status: 'Procesando',
-      customerName: fullName.trim(),
-      customerEmail: email.trim().toLowerCase(),
-      address: { fullName: fullName.trim(), street: street.trim(), city: city.trim(), phone: phone.trim() },
-      items: items.map((i) => ({
-        productId: i.product.id,
-        title: i.product.title,
-        price: i.product.price,
-        quantity: i.quantity,
-        imageUrl: i.product.imageUrl,
-      })),
-      paymentMethod,
-      subtotal,
-      shipping,
-      total,
-    };
-    onPlaceOrder(order);
-    setPlaced(order);
+    setError('');
+    setSubmitting(true);
+    try {
+      const order = await onPlaceOrder({
+        customerName: fullName.trim(),
+        customerEmail: email.trim().toLowerCase(),
+        address: { fullName: fullName.trim(), street: street.trim(), city: city.trim(), phone: phone.trim() },
+        items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
+        paymentMethod,
+      });
+      setPlaced(order);
+    } catch (err) {
+      setError(`No se pudo completar el pedido: ${(err as Error).message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const input =
@@ -129,10 +126,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, i
               {error && <p className="text-xs text-rose-600 font-semibold">{error}</p>}
               <button
                 type="submit"
-                disabled={items.length === 0}
+                disabled={items.length === 0 || submitting}
                 className="w-full bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-blue-950 font-black py-3 rounded-xl"
               >
-                Confirmar pedido
+                {submitting ? 'Procesando...' : 'Confirmar pedido'}
               </button>
             </div>
           </form>
