@@ -36,10 +36,14 @@ export interface OrderItem {
   imageUrl: string;
 }
 
+export type OrderStatus = 'pendiente' | 'confirmado' | 'enviado' | 'entregado' | 'cancelado';
+export type PaymentStatus = 'pendiente' | 'pagado' | 'reembolsado';
+export type PaymentMethod = 'paypal' | 'cash_on_delivery';
+
 export interface Order {
   id: string;
   orderNumber: string;
-  userId: string;
+  userId: string | null;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -48,16 +52,24 @@ export interface Order {
     city: string;
     state: string;
     zipCode: string;
+    notes?: string;
   };
   items: OrderItem[];
   subtotal: number;
   discount: number;
+  couponCode?: string | null;
   shipping: number;
   total: number;
-  paymentMethod: 'credit_card' | 'paypal' | 'cash_on_delivery';
-  status: 'completada' | 'procesando' | 'en_camino';
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  status: OrderStatus;
   createdAt: number;
-  estimatedDeliveryDate: string;
+}
+
+export interface StoreSettings {
+  freeShippingThreshold: number;
+  shippingFee: number;
+  currency: string;
 }
 
 export type Category = 

@@ -11,18 +11,29 @@ import { AuthModal } from './components/AuthModal';
 import { OrdersModal } from './components/OrdersModal';
 import { WishlistModal } from './components/WishlistModal';
 import { Footer } from './components/Footer';
-import { Product, CartItem, User, Order } from './types';
-import { 
-  getStoredProducts, 
-  getCurrentUser, 
-  logoutUser, 
-  getStoredCart, 
-  saveStoredCart, 
-  getStoredOrders,
+import { LegalModal, LegalPage } from './components/LegalModal';
+import { Product, CartItem, User, Order, StoreSettings } from './types';
+import {
+  getStoredCart,
+  saveStoredCart,
   getStoredWishlist,
   saveStoredWishlist,
-  toggleProductInWishlist
+  toggleProductInWishlist,
+  purgeLegacyData,
+  getGuestOrderRefs,
+  addGuestOrderRef,
 } from './utils/storage';
+import {
+  fetchProducts,
+  fetchSettings,
+  fetchOrders,
+  fetchGuestOrder,
+  getSessionUser,
+  onAuthChange,
+  signOut,
+  DEFAULT_SETTINGS,
+} from './lib/api';
+import { DELIVERY_ESTIMATE, RETURN_DAYS } from './config';
 import { 
   ShoppingBag, 
   Zap, 
@@ -31,8 +42,8 @@ import {
   LayoutDashboard, 
   Package, 
   SlidersHorizontal,
-  Crown,
-  Heart
+  Heart,
+  Truck
 } from 'lucide-react';
 
 export default function App() {
@@ -42,6 +53,11 @@ export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
+  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'update-password'>('login');
+  const [legalPage, setLegalPage] = useState<LegalPage | null>(null);
 
   // Filtering & Sorting
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
@@ -56,24 +72,72 @@ export default function App() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<Product | null>(null);
-  const [checkoutDiscountRate, setCheckoutDiscountRate] = useState<number>(0);
+  const [checkoutCoupon, setCheckoutCoupon] = useState<string | null>(null);
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Initialize data from localStorage on mount
-  useEffect(() => {
-    const loadedProducts = getStoredProducts();
-    const loadedUser = getCurrentUser();
-    const loadedCart = getStoredCart();
-    const loadedOrders = getStoredOrders();
-    const loadedWishlist = getStoredWishlist();
+  const loadProducts = async () => {
+    try {
+      setLoadError('');
+      const list = await fetchProducts();
+      setProducts(list);
+      // Actualiza precios y stock de lo que ya está en la bolsa
+      setCart((prev) => {
+        const synced = prev
+          .map((item) => {
+            const fresh = list.find((p) => p.id === item.product.id);
+            if (!fresh || fresh.stock <= 0) return null;
+            return { product: fresh, quantity: Math.min(item.quantity, fresh.stock) };
+          })
+          .filter(Boolean) as CartItem[];
+        saveStoredCart(synced);
+        return synced;
+      });
+    } catch (err: any) {
+      setLoadError(err?.message || 'No se pudieron cargar los productos.');
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  };
 
-    setProducts(loadedProducts);
-    setCurrentUser(loadedUser);
-    setCart(loadedCart);
-    setOrders(loadedOrders);
-    setWishlist(loadedWishlist);
+  const loadOrders = async (user: User | null) => {
+    try {
+      if (user) {
+        setOrders(await fetchOrders());
+      } else {
+        const refs = getGuestOrderRefs();
+        const found = await Promise.all(
+          refs.map((r) => fetchGuestOrder(r.orderNumber, r.email).catch(() => null))
+        );
+        setOrders(found.filter(Boolean) as Order[]);
+      }
+    } catch {
+      setOrders([]);
+    }
+  };
+
+  // Carga inicial
+  useEffect(() => {
+    purgeLegacyData();
+    setCart(getStoredCart());
+    setWishlist(getStoredWishlist());
+    loadProducts();
+    fetchSettings().then(setSettings);
+    getSessionUser().then((u) => {
+      setCurrentUser(u);
+      loadOrders(u);
+    });
+
+    const unsubscribe = onAuthChange((user, event) => {
+      setCurrentUser(user);
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') loadOrders(user);
+      if (event === 'PASSWORD_RECOVERY') {
+        setAuthMode('update-password');
+        setIsAuthOpen(true);
+      }
+    });
+    return unsubscribe;
   }, []);
 
   // Save cart whenever it changes
@@ -138,22 +202,28 @@ export default function App() {
   const handleBuyNow = (product: Product, quantity: number = 1) => {
     handleAddToCart(product, quantity);
     setSelectedProductForDetail(null);
-    setCheckoutDiscountRate(0);
+    setCheckoutCoupon(null);
     setIsCheckoutOpen(true);
   };
 
   // Proceed to checkout from cart drawer
-  const handleProceedToCheckout = (discountRate: number) => {
-    setCheckoutDiscountRate(discountRate);
+  const handleProceedToCheckout = (coupon: string | null) => {
+    setCheckoutCoupon(coupon);
     setIsCartOpen(false);
     setIsCheckoutOpen(true);
   };
 
   // Order placed callback
   const handleOrderSuccess = (newOrder: Order) => {
-    setOrders((prev) => [newOrder, ...prev]);
+    setOrders((prev) => [newOrder, ...prev.filter((o) => o.id !== newOrder.id)]);
+    if (!currentUser) addGuestOrderRef({ orderNumber: newOrder.orderNumber, email: newOrder.customerEmail });
     handleClearCart();
-    showToast(`¡Orden ${newOrder.orderNumber} confirmada con éxito!`);
+    loadProducts();
+    showToast(`Pedido ${newOrder.orderNumber} recibido`);
+  };
+
+  const handleOrderUpdated = (updated: Order) => {
+    setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
   };
 
   // Auth Operations
@@ -162,10 +232,16 @@ export default function App() {
     showToast(`Bienvenido: ${user.name}`);
   };
 
-  const handleLogout = () => {
-    logoutUser();
+  const handleLogout = async () => {
+    await signOut();
     setCurrentUser(null);
+    setIsAdminOpen(false);
     showToast('Has cerrado sesión correctamente');
+  };
+
+  const openAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthMode(mode);
+    setIsAuthOpen(true);
   };
 
   // Admin products update
@@ -281,7 +357,7 @@ export default function App() {
         onOpenCart={() => setIsCartOpen(true)}
         onOpenWishlist={() => setIsWishlistOpen(true)}
         wishlistCount={wishlist.length}
-        onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenAuth={() => openAuth('login')}
         onOpenAdmin={() => setIsAdminOpen(true)}
         onOpenOrders={() => setIsOrdersOpen(true)}
         onLogout={handleLogout}
@@ -315,7 +391,23 @@ export default function App() {
 
         {/* Products Grid: Fully Responsive */}
         <section className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6">
-          {filteredProducts.length === 0 ? (
+          {isLoadingProducts ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-4 lg:gap-5">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-2xl border border-gray-200 h-72 animate-pulse" />
+              ))}
+            </div>
+          ) : loadError ? (
+            <div className="bg-white rounded-3xl p-8 text-center border border-red-200 max-w-lg mx-auto space-y-3">
+              <p className="text-sm font-bold text-red-700">{loadError}</p>
+              <button
+                onClick={() => { setIsLoadingProducts(true); loadProducts(); }}
+                className="bg-blue-900 hover:bg-blue-800 text-amber-400 font-bold text-xs py-2.5 px-6 rounded-xl"
+              >
+                Reintentar
+              </button>
+            </div>
+          ) : filteredProducts.length === 0 ? (
             <div className="bg-white rounded-3xl p-8 sm:p-12 text-center border border-gray-200 shadow-xs max-w-lg mx-auto space-y-4">
               <div className="w-16 h-16 rounded-full bg-blue-50 text-blue-900 flex items-center justify-center mx-auto">
                 <ShoppingBag className="w-8 h-8" />
@@ -324,7 +416,11 @@ export default function App() {
                 No se encontraron productos
               </h3>
               <p className="text-xs text-gray-500">
-                No hay artículos que coincidan con "{searchQuery}" en la categoría "{selectedCategory}".
+                {products.length === 0
+                  ? 'Pronto agregaremos productos. ¡Vuelve en unos días!'
+                  : searchQuery.trim()
+                    ? `No hay artículos que coincidan con "${searchQuery}" en "${selectedCategory}".`
+                    : `No hay artículos en "${selectedCategory}" por ahora.`}
               </p>
               <button
                 id="reset-filter-button"
@@ -353,17 +449,17 @@ export default function App() {
           )}
         </section>
 
-        {/* Department Store Guarantees Section */}
+        {/* Cómo compramos: información real */}
         <section className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
           <div className="bg-white border border-gray-200/80 rounded-3xl p-5 sm:p-8 shadow-xs grid grid-cols-1 md:grid-cols-3 gap-5">
             <div className="flex items-start gap-3.5">
               <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0 border border-amber-200">
-                <Zap className="w-5 h-5 fill-current" />
+                <Truck className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-xs sm:text-sm font-bold text-blue-950">Precios Directos y Colecciones</h4>
+                <h4 className="text-xs sm:text-sm font-bold text-blue-950">Envío a domicilio</h4>
                 <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                  Conectamos con fabricantes selectos para ofrecer artículos exclusivos con descuentos de hasta el 70%.
+                  Entrega estimada en {DELIVERY_ESTIMATE}. Envío gratis en pedidos desde US${settings.freeShippingThreshold.toFixed(2)}.
                 </p>
               </div>
             </div>
@@ -373,9 +469,9 @@ export default function App() {
                 <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
               </div>
               <div>
-                <h4 className="text-xs sm:text-sm font-bold text-blue-950">Garantía TemaShop Elite</h4>
+                <h4 className="text-xs sm:text-sm font-bold text-blue-950">Pago seguro</h4>
                 <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                  Garantía total de reembolso durante 90 días con devolución asistida y servicio de atención prioritaria.
+                  Paga con PayPal o tarjeta a través de PayPal, o en efectivo al recibir. Nunca guardamos los datos de tu tarjeta.
                 </p>
               </div>
             </div>
@@ -385,9 +481,12 @@ export default function App() {
                 <ShoppingBag className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-xs sm:text-sm font-bold text-blue-950">Mercancía por Categorías</h4>
+                <h4 className="text-xs sm:text-sm font-bold text-blue-950">Devoluciones</h4>
                 <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                  Administración integral de stock organizada en tiempo real con persistencia en almacenamiento local.
+                  Tienes {RETURN_DAYS} días desde que recibes tu pedido para solicitar una devolución.{' '}
+                  <button onClick={() => setLegalPage('returns')} className="text-blue-900 font-semibold underline">
+                    Ver política
+                  </button>
                 </p>
               </div>
             </div>
@@ -398,7 +497,9 @@ export default function App() {
 
       {/* Footer */}
       <Footer
-        onOpenAdmin={() => setIsAdminOpen(true)}
+        onOpenLegal={setLegalPage}
+        onOpenOrders={() => setIsOrdersOpen(true)}
+        freeShippingThreshold={settings.freeShippingThreshold}
         onSelectCategory={(cat) => {
           setSelectedCategory(cat);
           const el = document.getElementById('catalog-section');
@@ -506,8 +607,10 @@ export default function App() {
           onClick={() => {
             if (currentUser?.role === 'admin') {
               setIsAdminOpen(true);
+            } else if (currentUser) {
+              setIsOrdersOpen(true);
             } else {
-              setIsAuthOpen(true);
+              openAuth('login');
             }
           }}
           className={`flex flex-col items-center justify-center min-w-[50px] py-1 active:scale-95 transition-all ${
@@ -520,7 +623,7 @@ export default function App() {
         >
           <LayoutDashboard className={`w-5 h-5 transition-transform duration-200 ${activeMobileTab === 'admin' ? 'scale-110 text-amber-500 stroke-[2.5]' : ''}`} />
           <span className="text-[10px] mt-0.5 leading-none">
-            {currentUser?.role === 'admin' ? 'Admin' : 'Admin'}
+            {currentUser?.role === 'admin' ? 'Admin' : currentUser ? 'Cuenta' : 'Entrar'}
           </span>
           <span 
             className={`w-1.5 h-1.5 rounded-full mt-1 transition-all duration-300 ${
@@ -616,6 +719,7 @@ export default function App() {
         onRemoveItem={handleRemoveCartItem}
         onClearCart={handleClearCart}
         onProceedToCheckout={handleProceedToCheckout}
+        settings={settings}
       />
 
       {/* Checkout Modal */}
@@ -624,9 +728,13 @@ export default function App() {
         onClose={() => setIsCheckoutOpen(false)}
         cart={cart}
         currentUser={currentUser}
-        discountRate={checkoutDiscountRate}
+        couponCode={checkoutCoupon}
+        settings={settings}
         onOrderSuccess={handleOrderSuccess}
+        onOrderUpdated={handleOrderUpdated}
         onViewOrders={() => setIsOrdersOpen(true)}
+        onOpenLegal={setLegalPage}
+        onOpenAuth={() => openAuth('login')}
       />
 
       {/* Admin Panel Modal */}
@@ -637,14 +745,19 @@ export default function App() {
         products={products}
         orders={orders}
         onProductsUpdated={handleProductsUpdated}
-        onOpenAuthForAdmin={() => setIsAuthOpen(true)}
+        onOrderUpdated={handleOrderUpdated}
+        onRefresh={() => { loadProducts(); loadOrders(currentUser); }}
+        onOpenAuthForAdmin={() => openAuth('login')}
       />
 
       {/* Local Auth Modal */}
       <AuthModal
+        key={`${authMode}-${isAuthOpen}`}
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         onLoginSuccess={handleLoginSuccess}
+        onNotice={showToast}
+        initialMode={authMode}
       />
 
       {/* Orders History Modal */}
@@ -653,7 +766,14 @@ export default function App() {
         onClose={() => setIsOrdersOpen(false)}
         orders={orders}
         currentUser={currentUser}
+        onOpenAuth={() => { setIsOrdersOpen(false); openAuth('login'); }}
+        onGuestOrderFound={(o) => {
+          addGuestOrderRef({ orderNumber: o.orderNumber, email: o.customerEmail });
+          setOrders((prev) => [o, ...prev.filter((x) => x.id !== o.id)]);
+        }}
       />
+
+      <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />
 
     </div>
   );
