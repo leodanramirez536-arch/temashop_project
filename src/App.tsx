@@ -4,14 +4,16 @@ import { Product, CartItem, User, Order } from './types';
 import {
   getProducts,
   getOrders,
-  saveOrder,
+  placeOrder,
   getCart,
   saveCart,
   getWishlist,
   saveWishlist,
-  getSession,
-  saveSession,
+  userFromSession,
+  logoutUser,
+  PlaceOrderInput,
 } from './utils/storage';
+import { supabase } from './lib/supabase';
 import { Navbar } from './components/Navbar';
 import { ProductCard } from './components/ProductCard';
 import { CartDrawer } from './components/CartDrawer';
@@ -25,11 +27,13 @@ import { AdminPanel } from './components/AdminPanel';
 const appName = 'TemaShop';
 
 export default function App() {
-  const [products, setProducts] = useState<Product[]>(() => getProducts());
-  const [orders, setOrders] = useState<Order[]>(() => getOrders());
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [orders, setOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<CartItem[]>(() => getCart());
   const [wishlist, setWishlist] = useState<string[]>(() => getWishlist());
-  const [currentUser, setCurrentUser] = useState<User | null>(() => getSession());
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState('Todas');
@@ -46,10 +50,37 @@ export default function App() {
 
   useEffect(() => saveCart(cart), [cart]);
   useEffect(() => saveWishlist(wishlist), [wishlist]);
-  useEffect(() => saveSession(currentUser), [currentUser]);
+
+  const loadProducts = async () => {
+    try {
+      setLoadError('');
+      setProducts(await getProducts());
+    } catch (err) {
+      setLoadError((err as Error).message);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  // cargar catálogo y sesión
+  useEffect(() => {
+    loadProducts();
+    supabase.auth.getSession().then(({ data }) => setCurrentUser(userFromSession(data.session)));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUser(userFromSession(session));
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // pedidos: el admin ve todos, el cliente solo los suyos (lo controla la base de datos)
+  useEffect(() => {
+    if (currentUser) getOrders().then(setOrders);
+    else setOrders([]);
+  }, [currentUser?.id]);
 
   // mantener el carrito sincronizado con el catálogo (precio/stock/eliminados)
   useEffect(() => {
+    if (loadingProducts || loadError) return;
     setCart((prev) =>
       prev
         .map((i) => {
@@ -58,7 +89,7 @@ export default function App() {
         })
         .filter((i): i is CartItem => !!i && i.quantity > 0)
     );
-  }, [products]);
+  }, [products, loadingProducts, loadError]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -100,17 +131,15 @@ export default function App() {
     setWishlist((prev) => (prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]));
   };
 
-  const handlePlaceOrder = (order: Order) => {
-    setOrders(saveOrder(order));
-    setProducts(getProducts());
+  const handlePlaceOrder = async (input: PlaceOrderInput): Promise<Order> => {
+    const order = await placeOrder(input);
     setCart([]);
+    loadProducts();
+    if (currentUser) getOrders().then(setOrders);
+    return order;
   };
 
-  const userOrders = currentUser
-    ? currentUser.role === 'admin'
-      ? orders
-      : orders.filter((o) => o.customerEmail === currentUser.email)
-    : [];
+  const userOrders = orders;
 
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
 
@@ -127,7 +156,8 @@ export default function App() {
         onOpenOrders={() => setOrdersOpen(true)}
         onOpenAuth={() => setAuthOpen(true)}
         onOpenAdmin={() => setAdminOpen(true)}
-        onLogout={() => {
+        onLogout={async () => {
+          await logoutUser();
           setCurrentUser(null);
           setAdminOpen(false);
           showToast('Sesión cerrada');
@@ -216,7 +246,18 @@ export default function App() {
             </label>
           </div>
 
-          {visibleProducts.length === 0 ? (
+          {loadingProducts ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-sm text-slate-500">
+              Cargando productos...
+            </div>
+          ) : loadError ? (
+            <div className="bg-white rounded-2xl border border-rose-200 p-10 text-center text-sm text-rose-600 space-y-3">
+              <p>No se pudieron cargar los productos. Revisa tu conexión.</p>
+              <button onClick={loadProducts} className="bg-blue-900 text-amber-400 font-bold px-4 py-2 rounded-xl">
+                Reintentar
+              </button>
+            </div>
+          ) : visibleProducts.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-sm text-slate-500">
               No encontramos productos con esos filtros.
             </div>
