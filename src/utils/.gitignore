@@ -1,0 +1,30 @@
+# Environment variables - NUNCA hacer commit
+.env
+.env.local
+.env.*.local
+
+# Node modules
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Dependencies lock files (opcional - descomentar si es necesario)
+# package-lock.json
+# yarn.lock
