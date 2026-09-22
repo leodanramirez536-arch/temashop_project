@@ -1,31 +1,22 @@
 // ======================================
-// ALMACENAMIENTO - STORAGE UTIL (localStorage)
+// DATOS DE LA TIENDA
+// Productos, pedidos y cuentas → Supabase (compartido por todos)
+// Carrito y lista de deseos → navegador de cada cliente
 // ======================================
-// Las credenciales del administrador se leen de variables de entorno
-// (VITE_ADMIN_EMAIL / VITE_ADMIN_PASSWORD). Configúralas en Vercel:
-// Settings → Environment Variables. Si no existen, el acceso admin queda desactivado.
 
+import type { Session } from '@supabase/supabase-js';
+import { supabase, ADMIN_EMAIL } from '../lib/supabase';
 import { Product, User, Order, CartItem } from '../types';
 import { initialProducts } from '../data/initialProducts';
 
-const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || 'miguelgraphalterna@gmail.com').trim().toLowerCase();
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '';
-
-const USERS_KEY = 'temashop_users';
-const PRODUCTS_KEY = 'temashop_products';
-const ORDERS_KEY = 'temashop_orders';
-const SESSION_KEY = 'temashop_session';
 const CART_KEY = 'temashop_cart';
 const WISHLIST_KEY = 'temashop_wishlist';
-
-interface StoredUser extends User {
-  password: string;
-}
 
 export interface AuthResult {
   success: boolean;
   user?: User | null;
   error?: string;
+  needsConfirmation?: boolean;
 }
 
 // ---------- helpers ----------
@@ -41,137 +32,188 @@ function read<T>(key: string, fallback: T): T {
 function write<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.error(`No se pudo guardar ${key}:`, error);
+  } catch {
+    /* sin almacenamiento disponible */
   }
 }
 
-function stripPassword(u: StoredUser): User {
-  const { password: _pw, ...rest } = u;
-  return rest;
+function translateError(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes('invalid login credentials')) return 'Email o contraseña incorrectos.';
+  if (m.includes('email not confirmed')) return 'Debes confirmar tu correo. Revisa tu bandeja de entrada (y spam).';
+  if (m.includes('already registered')) return 'Este email ya está registrado. Inicia sesión.';
+  if (m.includes('password should be at least')) return 'La contraseña debe tener al menos 6 caracteres.';
+  if (m.includes('rate limit')) return 'Demasiados intentos. Espera un momento y vuelve a intentar.';
+  if (m.includes('stock insuficiente')) return msg.replace(/^.*Stock/, 'Stock');
+  return msg;
 }
 
-// ---------- usuarios ----------
-function getAllUsers(): StoredUser[] {
-  return read<StoredUser[]>(USERS_KEY, []);
+// ---------- mapeo filas <-> tipos ----------
+interface ProductRow {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  price: number | string;
+  original_price: number | string;
+  stock: number;
+  image_url: string;
+  rating: number | string;
+  reviews_count: number;
+  sales_count: number;
+  is_flash_deal: boolean;
+  badge: string | null;
 }
 
-export function authenticateUser(email: string, password: string): AuthResult {
-  const normEmail = email.trim().toLowerCase();
+const toProduct = (r: ProductRow): Product => ({
+  id: r.id,
+  title: r.title,
+  description: r.description,
+  category: r.category,
+  price: Number(r.price),
+  originalPrice: Number(r.original_price),
+  stock: r.stock,
+  imageUrl: r.image_url,
+  rating: Number(r.rating),
+  reviewsCount: r.reviews_count,
+  salesCount: r.sales_count,
+  isFlashDeal: r.is_flash_deal,
+  badge: r.badge || undefined,
+});
 
-  if (ADMIN_EMAIL && ADMIN_PASSWORD && normEmail === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-    return {
-      success: true,
-      user: {
-        id: 'admin-001',
-        name: 'Administrador',
-        email: ADMIN_EMAIL,
-        role: 'admin',
-        createdAt: new Date().toISOString(),
-      },
-    };
-  }
+const toRow = (p: Omit<Product, 'id'> & { id?: string }) => ({
+  ...(p.id ? { id: p.id } : {}),
+  title: p.title,
+  description: p.description,
+  category: p.category,
+  price: p.price,
+  original_price: p.originalPrice,
+  stock: p.stock,
+  image_url: p.imageUrl,
+  rating: Math.min(5, Number(p.rating.toFixed(1))),
+  reviews_count: p.reviewsCount,
+  sales_count: p.salesCount,
+  is_flash_deal: p.isFlashDeal,
+  badge: p.badge || null,
+});
 
-  const user = getAllUsers().find((u) => u.email === normEmail && u.password === password);
-  if (user) return { success: true, user: stripPassword(user) };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const toOrder = (r: any): Order => ({
+  id: r.id,
+  orderNumber: r.order_number,
+  createdAt: r.created_at,
+  status: r.status,
+  customerName: r.customer_name,
+  customerEmail: r.customer_email,
+  address: r.address,
+  items: r.items,
+  paymentMethod: r.payment_method,
+  subtotal: Number(r.subtotal),
+  shipping: Number(r.shipping),
+  total: Number(r.total),
+});
 
-  return { success: false, error: 'Email o contraseña incorrectos.' };
-}
-
-export function registerUser(name: string, email: string, password: string): AuthResult {
-  const normEmail = email.trim().toLowerCase();
-  const users = getAllUsers();
-
-  if (!name.trim() || !normEmail) {
-    return { success: false, error: 'Completa nombre y email.' };
-  }
-  if (normEmail === ADMIN_EMAIL || users.some((u) => u.email === normEmail)) {
-    return { success: false, error: 'Este email ya está registrado.' };
-  }
-
-  const newUser: StoredUser = {
-    id: `user-${Date.now()}`,
-    name: name.trim(),
-    email: normEmail,
-    password,
-    role: 'customer',
-    createdAt: new Date().toISOString(),
+// ---------- cuentas ----------
+export function userFromSession(session: Session | null): User | null {
+  const u = session?.user;
+  if (!u?.email) return null;
+  const email = u.email.toLowerCase();
+  return {
+    id: u.id,
+    name: (u.user_metadata?.name as string) || (email === ADMIN_EMAIL ? 'Administrador' : email.split('@')[0]),
+    email,
+    role: email === ADMIN_EMAIL ? 'admin' : 'customer',
+    createdAt: u.created_at,
   };
-  users.push(newUser);
-  write(USERS_KEY, users);
-  return { success: true, user: stripPassword(newUser) };
 }
 
-export function getSession(): User | null {
-  return read<User | null>(SESSION_KEY, null);
+export async function authenticateUser(email: string, password: string): Promise<AuthResult> {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.trim().toLowerCase(),
+    password,
+  });
+  if (error) return { success: false, error: translateError(error.message) };
+  return { success: true, user: userFromSession(data.session) };
 }
 
-export function saveSession(user: User | null): void {
-  if (user) write(SESSION_KEY, user);
-  else localStorage.removeItem(SESSION_KEY);
+export async function registerUser(name: string, email: string, password: string): Promise<AuthResult> {
+  if (!name.trim() || !email.trim()) return { success: false, error: 'Completa nombre y email.' };
+  const { data, error } = await supabase.auth.signUp({
+    email: email.trim().toLowerCase(),
+    password,
+    options: { data: { name: name.trim() }, emailRedirectTo: window.location.origin },
+  });
+  if (error) return { success: false, error: translateError(error.message) };
+  if (!data.session) return { success: true, needsConfirmation: true };
+  return { success: true, user: userFromSession(data.session) };
+}
+
+export async function logoutUser(): Promise<void> {
+  await supabase.auth.signOut();
 }
 
 // ---------- productos ----------
-export function getProducts(): Product[] {
-  const stored = read<Product[] | null>(PRODUCTS_KEY, null);
-  if (!stored || !Array.isArray(stored)) {
-    write(PRODUCTS_KEY, initialProducts);
-    return [...initialProducts];
-  }
-  // reparar imágenes antiguas que ya no cargan
-  const BROKEN_IMG = 'photo-1608248597359-0524458f4a13';
-  if (stored.some((p) => p.imageUrl?.includes(BROKEN_IMG))) {
-    const fixed = stored.map((p) =>
-      p.imageUrl?.includes(BROKEN_IMG) ? { ...p, imageUrl: p.imageUrl.replace(BROKEN_IMG, 'photo-1620916566398-39f1143ab7be') } : p
-    );
-    write(PRODUCTS_KEY, fixed);
-    return fixed;
-  }
-  return stored;
+export async function getProducts(): Promise<Product[]> {
+  const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+  if (error) throw new Error(translateError(error.message));
+  return (data as ProductRow[]).map(toProduct);
 }
 
-export function addProductToStorage(data: Omit<Product, 'id'>): Product {
-  const product: Product = { ...data, id: `p-${Date.now()}` };
-  write(PRODUCTS_KEY, [product, ...getProducts()]);
-  return product;
+export async function addProductToStorage(product: Omit<Product, 'id'>): Promise<Product> {
+  const { data, error } = await supabase.from('products').insert(toRow(product)).select().single();
+  if (error) throw new Error(translateError(error.message));
+  return toProduct(data as ProductRow);
 }
 
-export function updateProductInStorage(product: Product): Product[] {
-  const updated = getProducts().map((p) => (p.id === product.id ? product : p));
-  write(PRODUCTS_KEY, updated);
-  return updated;
+export async function updateProductInStorage(product: Product): Promise<Product[]> {
+  const { id, ...rest } = product;
+  const { error } = await supabase.from('products').update(toRow(rest)).eq('id', id);
+  if (error) throw new Error(translateError(error.message));
+  return getProducts();
 }
 
-export function deleteProductFromStorage(productId: string): Product[] {
-  const updated = getProducts().filter((p) => p.id !== productId);
-  write(PRODUCTS_KEY, updated);
-  return updated;
+export async function deleteProductFromStorage(productId: string): Promise<Product[]> {
+  const { error } = await supabase.from('products').delete().eq('id', productId);
+  if (error) throw new Error(translateError(error.message));
+  return getProducts();
 }
 
-export function resetProductsToDefault(): Product[] {
-  write(PRODUCTS_KEY, initialProducts);
-  return [...initialProducts];
+export async function resetProductsToDefault(): Promise<Product[]> {
+  const del = await supabase.from('products').delete().neq('id', '');
+  if (del.error) throw new Error(translateError(del.error.message));
+  const ins = await supabase.from('products').insert(initialProducts.map((p) => toRow(p)));
+  if (ins.error) throw new Error(translateError(ins.error.message));
+  return getProducts();
 }
 
-// ---------- órdenes ----------
-export function getOrders(): Order[] {
-  return read<Order[]>(ORDERS_KEY, []);
+// ---------- pedidos ----------
+export async function getOrders(): Promise<Order[]> {
+  const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+  if (error) return [];
+  return (data || []).map(toOrder);
 }
 
-export function saveOrder(order: Order): Order[] {
-  const updated = [order, ...getOrders()];
-  write(ORDERS_KEY, updated);
+export interface PlaceOrderInput {
+  customerName: string;
+  customerEmail: string;
+  address: Order['address'];
+  items: { productId: string; quantity: number }[];
+  paymentMethod: string;
+}
 
-  // descontar stock
-  const products = getProducts().map((p) => {
-    const item = order.items.find((i) => i.productId === p.id);
-    return item ? { ...p, stock: Math.max(0, p.stock - item.quantity), salesCount: p.salesCount + item.quantity } : p;
+export async function placeOrder(input: PlaceOrderInput): Promise<Order> {
+  const { data, error } = await supabase.rpc('place_order', {
+    p_customer_name: input.customerName,
+    p_customer_email: input.customerEmail,
+    p_address: input.address,
+    p_items: input.items,
+    p_payment_method: input.paymentMethod,
   });
-  write(PRODUCTS_KEY, products);
-  return updated;
+  if (error) throw new Error(translateError(error.message));
+  return toOrder(data);
 }
 
-// ---------- carrito y deseos ----------
+// ---------- carrito y deseos (en el navegador) ----------
 export function getCart(): CartItem[] {
   return read<CartItem[]>(CART_KEY, []);
 }
