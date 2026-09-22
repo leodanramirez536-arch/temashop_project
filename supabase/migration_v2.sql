@@ -126,7 +126,7 @@ declare
   v_email text;
   new_order public.orders;
 begin
-  if p_payment_method not in ('cash_on_delivery', 'paypal') then
+  if p_payment_method not in ('cash_on_delivery', 'paypal', 'zelle', 'cashapp') then
     raise exception 'Método de pago no válido';
   end if;
   if coalesce(length(trim(p_customer_name)), 0) < 2 or length(p_customer_name) > 120 then
