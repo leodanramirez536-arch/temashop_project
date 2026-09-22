@@ -8,7 +8,7 @@
 import { Product, User, Order, CartItem } from '../types';
 import { initialProducts } from '../data/initialProducts';
 
-const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase();
+const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || 'miguelgraphalterna@gmail.com').trim().toLowerCase();
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '';
 
 const USERS_KEY = 'temashop_users';
