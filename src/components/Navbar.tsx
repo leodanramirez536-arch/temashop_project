@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Product } from '../types';
 import { 
   ShoppingBag, 
   Search, 
@@ -42,6 +43,9 @@ interface NavbarProps {
   onLogout: () => void;
   onSelectCategory: (category: string) => void;
   freeShippingThreshold: number;
+  products?: Product[];
+  onOpenProduct?: (p: Product) => void;
+  onSubmitSearch?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -58,8 +62,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
   onSelectCategory,
   freeShippingThreshold,
+  products = [],
+  onOpenProduct,
+  onSubmitSearch,
 }) => {
-  const { tr, cat } = useLang();
+  const { tr, cat, lang } = useLang();
+  const [searchFocused, setSearchFocused] = useState(false);
+  const q = searchQuery.trim().toLowerCase();
+  const titleOf = (p: Product) => (lang === 'en' && p.titleEn ? p.titleEn : p.title);
+  const suggestions = q.length >= 2
+    ? products
+        .filter((p) =>
+          [p.title, p.titleEn || '', p.category, cat(p.category)].some((t) => t.toLowerCase().includes(q))
+        )
+        .slice(0, 6)
+    : [];
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -159,6 +176,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                   placeholder={tr('Buscar productos', 'Search products')}
                   value={searchQuery}
                   onChange={(e) => onSearchChange(e.target.value)}
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setSearchFocused(false);
+                      (e.target as HTMLInputElement).blur();
+                      onSubmitSearch?.();
+                    }
+                  }}
+                  autoComplete="off"
+                  aria-label={tr('Buscar productos', 'Search products')}
                   className="w-full py-1.5 sm:py-2.5 px-2.5 sm:px-3 text-xs sm:text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent"
                 />
                 {searchQuery && (
@@ -173,11 +201,49 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
                 <button
                   id="search-submit-button"
+                  onClick={() => { setSearchFocused(false); onSubmitSearch?.(); }}
                   className="bg-blue-900 hover:bg-blue-800 text-amber-400 px-4 sm:px-6 py-2.5 font-black text-xs sm:text-sm transition-colors items-center gap-1 hidden md:flex border-l border-blue-800"
                 >
                   {tr('Buscar', 'Search')}
                 </button>
               </div>
+
+              {/* Sugerencias mientras escribe */}
+              {searchFocused && q.length >= 2 && (
+                <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden z-50 min-w-[260px]">
+                  {suggestions.length === 0 ? (
+                    <p className="px-4 py-3 text-xs text-slate-500">{tr('Sin resultados para', 'No results for')} "{searchQuery.trim()}"</p>
+                  ) : (
+                    <ul>
+                      {suggestions.map((p) => (
+                        <li key={p.id}>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => { setSearchFocused(false); onOpenProduct?.(p); }}
+                            className="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-50 text-left"
+                          >
+                            <img src={p.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover bg-slate-100 flex-shrink-0" />
+                            <span className="flex-1 min-w-0">
+                              <span className="block text-xs font-semibold text-slate-900 truncate">{titleOf(p)}</span>
+                              <span className="block text-[10px] text-slate-500">{cat(p.category)}</span>
+                            </span>
+                            <span className="text-xs font-bold text-blue-950">${p.price.toFixed(2)}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => { setSearchFocused(false); onSubmitSearch?.(); }}
+                    className="w-full text-left px-4 py-2.5 text-xs font-semibold text-blue-900 bg-slate-50 border-t border-slate-100 hover:bg-slate-100"
+                  >
+                    {tr('Ver todos los resultados', 'See all results')} →
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

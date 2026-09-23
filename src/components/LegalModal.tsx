@@ -49,7 +49,7 @@ const PrivacyEs = () => (
   <>
     <p>En {STORE_NAME} cuidamos tus datos personales. Esta política explica qué datos recopilamos y para qué.</p>
     <H>Datos que recopilamos</H>
-    <p>Nombre, correo electrónico, teléfono y dirección de entrega cuando haces un pedido o creas una cuenta, y el detalle de tus compras.</p>
+    <p>Nombre, correo electrónico, teléfono y dirección de entrega cuando haces un pedido o creas una cuenta, y el detalle de tus compras. Si te suscribes a nuestras ofertas, guardamos tu correo para enviártelas; puedes pedir la baja en cualquier momento.</p>
     <H>Para qué los usamos</H>
     <p>Solo para procesar y entregar tus pedidos, comunicarnos contigo sobre ellos, atender devoluciones y cumplir obligaciones legales. No vendemos tus datos.</p>
     <H>Con quién los compartimos</H>
@@ -105,7 +105,7 @@ const PrivacyEn = () => (
   <>
     <p>At {STORE_NAME} we take care of your personal data. This policy explains what we collect and why.</p>
     <H>Data we collect</H>
-    <p>Your name, email, phone number and delivery address when you place an order or create an account, plus the details of your purchases.</p>
+    <p>Your name, email, phone number and delivery address when you place an order or create an account, plus the details of your purchases. If you subscribe to our deals, we keep your email to send them; you can unsubscribe at any time.</p>
     <H>How we use it</H>
     <p>Only to process and deliver your orders, contact you about them, handle returns and meet legal obligations. We do not sell your data.</p>
     <H>Who we share it with</H>

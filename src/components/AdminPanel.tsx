@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   X, 
   PlusCircle, 
@@ -32,6 +32,8 @@ import {
   ORDER_STATUS_LABELS,
   PAYMENT_STATUS_LABELS,
   PAYMENT_METHOD_LABELS,
+  fetchSubscribers,
+  Subscriber,
 } from '../lib/api';
 import { formatMoney } from '../config';
 
@@ -97,7 +99,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onRefresh,
   onOpenAuthForAdmin,
 }) => {
-  const [mainTab, setMainTab] = useState<'inventory' | 'create' | 'orders' | 'analytics'>('inventory');
+  const [mainTab, setMainTab] = useState<'inventory' | 'create' | 'orders' | 'analytics' | 'subscribers'>('inventory');
+  const [subscribers, setSubscribers] = useState<Subscriber[] | null>(null);
+  const [subsError, setSubsError] = useState('');
+  const [subsCopied, setSubsCopied] = useState(false);
+  useEffect(() => {
+    if (mainTab !== 'subscribers' || subscribers) return;
+    fetchSubscribers().then(setSubscribers).catch((e) => setSubsError(e?.message || 'No se pudo cargar la lista.'));
+  }, [mainTab, subscribers]);
   const [selectedCategoryTab, setSelectedCategoryTab] = useState<string>('Todas');
   const [inventorySearch, setInventorySearch] = useState('');
 
@@ -430,6 +439,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               >
                 <TrendingUp className="w-4 h-4" />
                 <span>Pedidos ({orders.filter((o) => o.status !== 'entregado' && o.status !== 'cancelado').length})</span>
+              </button>
+
+              <button
+                id="tab-btn-subscribers"
+                onClick={() => setMainTab('subscribers')}
+                className={`py-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition-colors ${
+                  mainTab === 'subscribers'
+                    ? 'border-blue-900 text-blue-900'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Package className="w-4 h-4" />
+                <span>Suscriptores{subscribers ? ` (${subscribers.length})` : ''}</span>
               </button>
             </div>
 
@@ -969,6 +991,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {/* TAB 4: RENDIMIENTO Y GRÁFICOS (RECHARTS) */}
               {mainTab === 'analytics' && (
                 <AdminAnalytics products={products} orders={orders} />
+              )}
+
+              {/* TAB 5: LISTA DE CORREOS */}
+              {mainTab === 'subscribers' && (
+                <div className="space-y-3 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-slate-600">Clientes que pidieron recibir ofertas por correo.</p>
+                    {subscribers && subscribers.length > 0 && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard?.writeText(subscribers.map((s) => s.email).join(', ')).then(() => {
+                            setSubsCopied(true);
+                            setTimeout(() => setSubsCopied(false), 1800);
+                          });
+                        }}
+                        className="bg-blue-900 hover:bg-blue-800 text-white font-bold px-3 py-2 rounded-lg"
+                      >
+                        {subsCopied ? 'Copiados' : 'Copiar todos los correos'}
+                      </button>
+                    )}
+                  </div>
+                  {subsError && <p className="text-red-700 font-semibold">{subsError}</p>}
+                  {!subscribers && !subsError && <p className="text-slate-500">Cargando...</p>}
+                  {subscribers && subscribers.length === 0 && <p className="text-slate-500">Todavía no hay suscriptores.</p>}
+                  {subscribers && subscribers.length > 0 && (
+                    <div className="border border-slate-200 rounded-2xl divide-y divide-slate-100 bg-white">
+                      {subscribers.map((s) => (
+                        <div key={s.email} className="flex items-center justify-between px-4 py-2.5">
+                          <span className="font-semibold text-slate-800 break-all">{s.email}</span>
+                          <span className="text-slate-400 flex-shrink-0 ml-3">
+                            {s.lang.toUpperCase()} · {new Date(s.createdAt).toLocaleDateString('es-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
 
             </div>
