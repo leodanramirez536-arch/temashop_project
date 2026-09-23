@@ -11,6 +11,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Product } from '../types';
+import { useLang, useProductText } from '../i18n';
 
 interface WishlistModalProps {
   isOpen: boolean;
@@ -35,6 +36,8 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
   onClearWishlist,
   onOpenQuickView,
 }) => {
+  const { tr, cat } = useLang();
+  const pt = useProductText();
   if (!isOpen) return null;
 
   // Filter products matching wishlistIds in real-time
@@ -56,16 +59,13 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
-                  Mi Lista de Deseos
+                  {tr('Mis favoritos', 'My favorites')}
                 </h2>
-                <span className="bg-amber-500 text-blue-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
-                  FAVORITOS
-                </span>
               </div>
               <p className="text-xs text-blue-200 mt-0.5">
                 {wishlistProducts.length === 1 
-                  ? '1 artículo guardado en tu cuenta local' 
-                  : `${wishlistProducts.length} artículos guardados en tu cuenta local`}
+                  ? tr('1 artículo guardado', '1 saved item')
+                  : tr(`${wishlistProducts.length} artículos guardados`, `${wishlistProducts.length} saved items`)}
               </p>
             </div>
           </div>
@@ -74,7 +74,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
             id="close-wishlist-modal-button"
             onClick={onClose}
             className="p-2 text-blue-200 hover:text-white hover:bg-white/10 rounded-full transition-colors"
-            aria-label="Cerrar lista de deseos"
+            aria-label={tr('Cerrar', 'Close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -90,10 +90,10 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
               </div>
               <div>
                 <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                  Tu lista de favoritos está vacía
+                  {tr('Tu lista de favoritos está vacía', 'Your favorites list is empty')}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                  Haz clic en el ícono de corazón de cualquier producto para guardarlo aquí y comprarlo cuando lo desees.
+                  {tr('Haz clic en el ícono de corazón de cualquier producto para guardarlo aquí y comprarlo cuando lo desees.', 'Tap the heart on any product to save it here and buy it whenever you like.')}
                 </p>
               </div>
               <button
@@ -102,7 +102,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                 className="bg-blue-900 hover:bg-blue-800 text-amber-400 font-bold text-xs py-3 px-6 rounded-xl transition-all shadow-md shadow-blue-950/20 inline-flex items-center gap-2 hover:scale-[1.02] active:scale-95"
               >
                 <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>Explorar Catálogo TemaShop</span>
+                <span>{tr('Ver productos', 'Browse products')}</span>
               </button>
             </div>
           ) : (
@@ -110,7 +110,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
               {/* Top Action Bar */}
               <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100 text-xs">
                 <span className="text-slate-500 font-medium">
-                  Guardado en este dispositivo
+                  {tr('Guardado en este dispositivo', 'Saved on this device')}
                 </span>
 
                 <div className="flex items-center gap-2">
@@ -121,7 +121,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                       className="bg-blue-900 hover:bg-blue-800 text-amber-400 hover:text-amber-300 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-xs transition-colors"
                     >
                       <ShoppingBag className="w-3.5 h-3.5" />
-                      <span>Mover todo a la Bolsa ({inStockWishlistProducts.length})</span>
+                      <span>{tr('Añadir todo a la bolsa', 'Add all to cart')} ({inStockWishlistProducts.length})</span>
                     </button>
                   )}
 
@@ -129,10 +129,10 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                     id="wishlist-clear-all-button"
                     onClick={onClearWishlist}
                     className="text-slate-400 hover:text-red-600 px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1 hover:bg-red-50"
-                    title="Vaciar lista de deseos"
+                    title={tr('Vaciar favoritos', 'Clear favorites')}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>Vaciar</span>
+                    <span>{tr('Vaciar', 'Clear')}</span>
                   </button>
                 </div>
               </div>
@@ -160,7 +160,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                       >
                         <img
                           src={product.imageUrl}
-                          alt={product.title}
+                          alt={pt.title(product)}
                           className="w-full h-full object-cover object-center"
                         />
                         {discountPercent > 0 && (
@@ -173,7 +173,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                       {/* Info */}
                       <div className="flex-1 text-center sm:text-left min-w-0">
                         <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">
-                          {product.category}
+                          {cat(product.category)}
                         </span>
                         <h4 
                           onClick={() => {
@@ -181,9 +181,9 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                             onOpenQuickView(product);
                           }}
                           className="text-xs sm:text-sm font-bold text-slate-900 truncate hover:text-blue-900 cursor-pointer transition-colors"
-                          title={product.title}
+                          title={pt.title(product)}
                         >
-                          {product.title}
+                          {pt.title(product)}
                         </h4>
 
                         <div className="flex items-center justify-center sm:justify-start gap-2 mt-1">
@@ -199,12 +199,12 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                           {product.stock > 0 ? (
                             <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                              Disponible ({product.stock})
+                              {tr('Disponible', 'In stock')}
                             </span>
                           ) : (
                             <span className="text-[11px] text-red-600 font-semibold flex items-center gap-1">
                               <AlertCircle className="w-3 h-3" />
-                              Agotado
+                              {tr('Agotado', 'Sold out')}
                             </span>
                           )}
                         </div>
@@ -219,7 +219,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                             onOpenQuickView(product);
                           }}
                           className="p-2 text-slate-500 hover:text-blue-900 hover:bg-white rounded-xl border border-slate-200 transition-colors"
-                          title="Vista Detallada"
+                          title={tr('Ver detalle', 'View details')}
                         >
                           <Eye className="w-4 h-4" />
                         </button>
@@ -228,7 +228,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                           id={`wishlist-remove-${product.id}`}
                           onClick={() => onToggleWishlist(product)}
                           className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl border border-rose-200 transition-colors"
-                          title="Eliminar de la lista de deseos"
+                          title={tr('Quitar de favoritos', 'Remove from favorites')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -244,7 +244,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                           }`}
                         >
                           <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>Añadir</span>
+                          <span>{tr('Añadir', 'Add')}</span>
                         </button>
                       </div>
                     </div>
@@ -259,13 +259,13 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
         {wishlistProducts.length > 0 && (
           <div className="bg-slate-50 border-t border-slate-200 p-3 sm:p-4 flex items-center justify-between text-xs">
             <span className="text-slate-500">
-              Total estimado: <strong className="text-blue-950 font-black text-sm">${wishlistProducts.reduce((sum, p) => sum + p.price, 0).toFixed(2)}</strong>
+              {tr('Total estimado:', 'Estimated total:')} <strong className="text-blue-950 font-black text-sm">${wishlistProducts.reduce((sum, p) => sum + p.price, 0).toFixed(2)}</strong>
             </span>
             <button
               onClick={onClose}
               className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl transition-colors"
             >
-              Seguir Comprando
+              {tr('Seguir comprando', 'Keep shopping')}
             </button>
           </div>
         )}

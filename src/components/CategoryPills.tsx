@@ -11,6 +11,7 @@ import {
   ArrowUpDown
 } from 'lucide-react';
 import { CATEGORIES_LIST } from '../data/initialProducts';
+import { useLang } from '../i18n';
 
 interface CategoryPillsProps {
   selectedCategory: string;
@@ -27,6 +28,7 @@ export const CategoryPills: React.FC<CategoryPillsProps> = ({
   onSortChange,
   totalProductsCount,
 }) => {
+  const { tr, cat } = useLang();
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'Todas':
@@ -70,7 +72,7 @@ export const CategoryPills: React.FC<CategoryPillsProps> = ({
                 }`}
               >
                 {getCategoryIcon(category)}
-                <span>{category}</span>
+                <span>{cat(category)}</span>
               </button>
             );
           })}
@@ -79,7 +81,7 @@ export const CategoryPills: React.FC<CategoryPillsProps> = ({
         {/* Sort and Count */}
         <div className="flex items-center justify-between sm:justify-end gap-3 text-xs text-slate-500">
           <span className="font-medium whitespace-nowrap">
-            <strong className="text-blue-950">{totalProductsCount}</strong> {totalProductsCount === 1 ? 'producto' : 'productos'}
+            <strong className="text-blue-950">{totalProductsCount}</strong> {totalProductsCount === 1 ? tr('producto', 'product') : tr('productos', 'products')}
           </span>
 
           <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-xs">
@@ -90,12 +92,12 @@ export const CategoryPills: React.FC<CategoryPillsProps> = ({
               onChange={(e) => onSortChange(e.target.value)}
               className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer"
             >
-              <option value="featured">Más recientes</option>
-              <option value="price_low">Precio: menor a mayor</option>
-              <option value="price_high">Precio: mayor a menor</option>
-              <option value="discount">Mayor descuento</option>
-              <option value="sales">Más vendidos</option>
-              <option value="rating">Mejor calificados</option>
+              <option value="featured">{tr('Más recientes', 'Newest')}</option>
+              <option value="price_low">{tr('Precio: menor a mayor', 'Price: low to high')}</option>
+              <option value="price_high">{tr('Precio: mayor a menor', 'Price: high to low')}</option>
+              <option value="discount">{tr('Mayor descuento', 'Biggest discount')}</option>
+              <option value="sales">{tr('Más vendidos', 'Best sellers')}</option>
+              <option value="rating">{tr('Mejor calificados', 'Top rated')}</option>
             </select>
           </div>
         </div>

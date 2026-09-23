@@ -14,7 +14,8 @@ import {
   Banknote
 } from 'lucide-react';
 import { Product } from '../types';
-import { RETURN_DAYS, DELIVERY_ESTIMATE } from '../config';
+import { RETURN_DAYS } from '../config';
+import { useLang, useProductText } from '../i18n';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -33,6 +34,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   isWishlisted = false,
   onToggleWishlist,
 }) => {
+  const { tr, cat, delivery } = useLang();
+  const pt = useProductText();
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -73,7 +76,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   ? 'bg-rose-50 text-rose-500 border-rose-200 shadow-rose-500/20'
                   : 'bg-white/90 text-slate-500 hover:text-rose-500 hover:bg-white border-slate-200'
               }`}
-              title={isWishlisted ? "Quitar de Favoritos" : "Guardar en Favoritos"}
+              title={isWishlisted ? tr('Quitar de favoritos', 'Remove from favorites') : tr('Guardar en favoritos', 'Save to favorites')}
             >
               <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-rose-500 text-rose-500' : ''}`} />
             </button>
@@ -83,7 +86,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             id="close-detail-modal-button"
             onClick={onClose}
             className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors"
-            aria-label="Cerrar modal de producto"
+            aria-label={tr('Cerrar', 'Close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -100,7 +103,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             )}
             <img
               src={imageError ? fallbackImage : product.imageUrl}
-              alt={product.title}
+              alt={pt.title(product)}
               onError={() => setImageError(true)}
               className="max-h-80 w-full object-contain rounded-xl hover:scale-105 transition-transform duration-300"
             />
@@ -112,19 +115,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               {/* Category & Flash Deal */}
               <div className="flex flex-wrap items-center gap-2 mb-2 pr-24">
                 <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">
-                  {product.category}
+                  {cat(product.category)}
                 </span>
                 {product.isFlashDeal && (
                   <span className="bg-blue-950 text-amber-400 border border-amber-500/40 font-black text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 uppercase">
                     <Zap className="w-3 h-3 fill-current text-amber-400" />
-                    Oferta de la semana
+                    {tr('Oferta de la semana', 'This week\'s deal')}
                   </span>
                 )}
               </div>
 
               {/* Title */}
               <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
-                {product.title}
+                {pt.title(product)}
               </h2>
 
               <div className="flex items-center gap-2 mt-2 text-sm">
@@ -139,12 +142,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 )}
                 {(product.salesCount || 0) > 0 && (
                   <>
-                    <span className="text-xs text-slate-500">{product.salesCount} vendidos</span>
+                    <span className="text-xs text-slate-500">{product.salesCount} {tr(product.salesCount === 1 ? 'vendido' : 'vendidos', 'sold')}</span>
                     <span className="text-slate-300">•</span>
                   </>
                 )}
                 <span className={`text-xs font-semibold ${product.stock > 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                  {product.stock <= 0 ? 'Agotado' : product.stock <= 5 ? `Quedan solo ${product.stock}` : 'En existencia'}
+                  {product.stock <= 0 ? tr('Agotado', 'Sold out') : product.stock <= 5 ? tr(`Quedan solo ${product.stock}`, `Only ${product.stock} left`) : tr('En existencia', 'In stock')}
                 </span>
               </div>
 
@@ -160,21 +163,21 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 )}
                 {product.originalPrice > product.price && (
                   <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md ml-auto whitespace-nowrap">
-                    Ahorras ${(product.originalPrice - product.price).toFixed(2)}
+                    {tr('Ahorras', 'You save')} ${(product.originalPrice - product.price).toFixed(2)}
                   </span>
                 )}
               </div>
 
               {/* Description */}
               <p className="text-xs sm:text-sm text-slate-600 mt-3 leading-relaxed">
-                {product.description}
+                {pt.description(product)}
               </p>
             </div>
 
             {/* Quantity and Actions */}
             <div className="space-y-4 pt-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">Cantidad:</span>
+                <span className="text-xs font-bold text-slate-700">{tr('Cantidad:', 'Quantity:')}</span>
                 <div className="flex items-center border border-slate-300 rounded-xl overflow-hidden bg-slate-50">
                   <button
                     id="decrease-qty-btn"
@@ -209,12 +212,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   {isAdded ? (
                     <>
                       <Check className="w-4 h-4 stroke-[3]" />
-                      <span>Añadido a tu bolsa</span>
+                      <span>{tr('Añadido a tu bolsa', 'Added to cart')}</span>
                     </>
                   ) : (
                     <>
                       <ShoppingBag className="w-4 h-4" />
-                      <span>Añadir a la bolsa</span>
+                      <span>{tr('Añadir a la bolsa', 'Add to cart')}</span>
                     </>
                   )}
                 </button>
@@ -226,7 +229,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   className="py-3 px-4 rounded-xl font-black text-xs sm:text-sm bg-amber-500 hover:bg-amber-400 text-blue-950 flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-95 transition-all"
                 >
                   <Zap className="w-4 h-4 fill-current text-blue-950" />
-                  <span>Comprar ahora</span>
+                  <span>{tr('Comprar ahora', 'Buy now')}</span>
                 </button>
               </div>
 
@@ -234,19 +237,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               <ul className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2.5 text-xs text-slate-600">
                 <li className="flex items-start gap-2.5">
                   <Truck className="w-4 h-4 text-blue-900 flex-shrink-0 mt-px" />
-                  <span><strong className="text-slate-900 font-semibold">Entrega en {DELIVERY_ESTIMATE}</strong> directo a tu domicilio.</span>
+                  <span><strong className="text-slate-900 font-semibold">{tr(`Entrega en ${delivery}`, `Delivery in ${delivery}`)}</strong> {tr('directo a tu domicilio.', 'right to your door.')}</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <Banknote className="w-4 h-4 text-blue-900 flex-shrink-0 mt-px" />
-                  <span><strong className="text-slate-900 font-semibold">Paga al recibir</strong> en efectivo, o con tarjeta, Zelle o Cash App.</span>
+                  <span><strong className="text-slate-900 font-semibold">{tr('Paga al recibir', 'Pay on delivery')}</strong> {tr('en efectivo, o con tarjeta, Zelle o Cash App.', 'in cash, or pay by card, Zelle or Cash App.')}</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <RotateCcw className="w-4 h-4 text-blue-900 flex-shrink-0 mt-px" />
-                  <span><strong className="text-slate-900 font-semibold">{RETURN_DAYS} días para devolverlo</strong> si no es lo que esperabas.</span>
+                  <span><strong className="text-slate-900 font-semibold">{tr(`${RETURN_DAYS} días para devolverlo`, `${RETURN_DAYS}-day returns`)}</strong> {tr('si no es lo que esperabas.', 'if it\'s not what you expected.')}</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <ShieldCheck className="w-4 h-4 text-blue-900 flex-shrink-0 mt-px" />
-                  <span><strong className="text-slate-900 font-semibold">Pago protegido:</strong> nunca guardamos los datos de tu tarjeta.</span>
+                  <span><strong className="text-slate-900 font-semibold">{tr('Pago protegido:', 'Secure payment:')}</strong> {tr('nunca guardamos los datos de tu tarjeta.', 'we never store your card details.')}</span>
                 </li>
               </ul>
 

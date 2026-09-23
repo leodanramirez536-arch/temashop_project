@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Star, ShoppingBag, Check, Zap, Eye, Heart } from 'lucide-react';
 import { Product } from '../types';
+import { useLang, useProductText } from '../i18n';
 
 interface ProductCardProps {
   product: Product;
@@ -17,6 +18,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   isWishlisted = false,
   onToggleWishlist,
 }) => {
+  const { tr, cat, badge } = useLang();
+  const pt = useProductText();
   const [isAdded, setIsAdded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
@@ -54,12 +57,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {product.isFlashDeal && (
           <span className="bg-amber-400 text-blue-950 font-bold text-[10px] px-2 py-0.5 rounded-md shadow-xs flex items-center gap-0.5 uppercase tracking-wide">
             <Zap className="w-3 h-3 fill-current" />
-            Oferta
+            {tr('Oferta', 'Deal')}
           </span>
         )}
         {product.badge && !(product.isFlashDeal && /^oferta/i.test(product.badge.trim())) && (
           <span className="bg-blue-950/90 text-white text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-xs uppercase tracking-wide">
-            {product.badge}
+            {badge(product.badge)}
           </span>
         )}
       </div>
@@ -71,13 +74,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           id={`wishlist-btn-${product.id}`}
           type="button"
           onClick={handleWishlistClick}
-          aria-label={isWishlisted ? "Quitar de lista de deseos" : "Añadir a lista de deseos"}
+          aria-label={isWishlisted ? tr('Quitar de favoritos', 'Remove from favorites') : tr('Guardar en favoritos', 'Save to favorites')}
           className={`p-2 rounded-full shadow-sm backdrop-blur-xs transition-all duration-300 border active:scale-90 ${
             isWishlisted
               ? 'bg-white text-rose-500 border-rose-200 shadow-rose-500/20 scale-105 opacity-100'
               : 'bg-white/90 text-slate-400 hover:text-rose-500 hover:bg-white border-slate-100 hover:border-rose-200 hover:scale-110 opacity-80 sm:opacity-0 sm:group-hover:opacity-100'
           }`}
-          title={isWishlisted ? "Guardado en Favoritos" : "Guardar en Favoritos"}
+          title={isWishlisted ? tr('Guardado en favoritos', 'Saved to favorites') : tr('Guardar en favoritos', 'Save to favorites')}
         >
           <Heart 
             className={`w-4 h-4 transition-transform duration-300 ${
@@ -93,7 +96,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             onOpenQuickView(product);
           }}
           className="p-2 bg-white/95 hover:bg-white text-slate-700 hover:text-blue-900 rounded-full shadow-sm backdrop-blur-xs transition-all duration-200 hover:scale-110 active:scale-95 border border-slate-100 hover:border-blue-200 opacity-0 group-hover:opacity-100 transform translate-y-1 group-hover:translate-y-0"
-          title="Vista Rápida"
+          title={tr('Vista rápida', 'Quick view')}
         >
           <Eye className="w-3.5 h-3.5" />
         </button>
@@ -103,7 +106,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       <div className="relative w-full pt-[90%] bg-slate-50 overflow-hidden">
         <img
           src={imageError ? fallbackImage : product.imageUrl}
-          alt={product.title}
+          alt={pt.title(product)}
           onError={() => setImageError(true)}
           className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
           loading="lazy"
@@ -115,12 +118,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div>
           {/* Category */}
           <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 tracking-wide uppercase">
-            {product.category}
+            {cat(product.category)}
           </span>
 
           {/* Product Title */}
           <h3 className="text-[13px] sm:text-sm font-semibold text-slate-900 line-clamp-2 mt-1 leading-snug min-h-[2.5em] group-hover:text-blue-900 transition-colors duration-200">
-            {product.title}
+            {pt.title(product)}
           </h3>
 
           {/* Calificaciones y ventas reales (solo si existen) */}
@@ -133,7 +136,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 </div>
               )}
               {(product.salesCount || 0) > 0 && (
-                <span className="text-[11px] text-slate-500">{product.salesCount} vendidos</span>
+                <span className="text-[11px] text-slate-500">{product.salesCount} {tr(product.salesCount === 1 ? 'vendido' : 'vendidos', 'sold')}</span>
               )}
             </div>
           )}
@@ -154,7 +157,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {product.originalPrice > product.price && (
             <p className="text-[11px] font-semibold text-emerald-700 mt-0.5">
-              Ahorras ${(product.originalPrice - product.price).toFixed(2)}
+              {tr('Ahorras', 'You save')} ${(product.originalPrice - product.price).toFixed(2)}
             </p>
           )}
 
@@ -162,7 +165,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {product.stock <= 5 && product.stock > 0 && (
             <p className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
-              Quedan solo {product.stock}
+              {tr(`Quedan solo ${product.stock}`, `Only ${product.stock} left`)}
             </p>
           )}
 
@@ -182,14 +185,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {isAdded ? (
               <>
                 <Check className="w-4 h-4 stroke-[2.5]" />
-                <span className="text-white">Añadido</span>
+                <span className="text-white">{tr('Añadido', 'Added')}</span>
               </>
             ) : product.stock <= 0 ? (
-              <span>Agotado</span>
+              <span>{tr('Agotado', 'Sold out')}</span>
             ) : (
               <>
                 <ShoppingBag className="w-4 h-4 stroke-[2.2] transition-transform duration-200 group-hover/btn:-translate-y-0.5" />
-                <span><span className="sm:hidden">Añadir</span><span className="hidden sm:inline">Añadir a la bolsa</span></span>
+                <span><span className="sm:hidden">{tr('Añadir', 'Add')}</span><span className="hidden sm:inline">{tr('Añadir a la bolsa', 'Add to cart')}</span></span>
               </>
             )}
           </button>

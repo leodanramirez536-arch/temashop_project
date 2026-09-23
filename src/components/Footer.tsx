@@ -3,6 +3,7 @@ import { ShoppingBag, Mail, MessageCircle } from 'lucide-react';
 import { CONTACT_EMAIL, CONTACT_WHATSAPP } from '../config';
 import type { LegalPage } from './LegalModal';
 import { PaymentMethods } from './StoreInfo';
+import { useLang, LanguageToggle } from '../i18n';
 
 interface FooterProps {
   onSelectCategory: (cat: string) => void;
@@ -12,6 +13,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onOpenLegal, onOpenOrders }) => {
+  const { tr, cat } = useLang();
   const linkClass = 'hover:text-white transition-colors text-left';
   return (
     <footer className="bg-slate-950 text-gray-300 mt-8 border-t border-slate-800">
@@ -26,8 +28,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onOpenLegal, o
             </span>
           </div>
           <p className="text-xs text-gray-400 leading-relaxed">
-            Tecnología, hogar, moda, belleza y accesorios con entrega a domicilio. Compra fácil, paga como prefieras
-            y recibe en casa.
+            {tr('Tecnología, hogar, moda, belleza y accesorios con entrega a domicilio. Compra fácil, paga como prefieras y recibe en casa.', 'Electronics, home, fashion, beauty and accessories delivered to your door. Shop easy, pay your way and get it at home.')}
           </p>
           {(CONTACT_EMAIL || CONTACT_WHATSAPP) && (
             <div className="space-y-1.5 text-xs pt-1">
@@ -47,32 +48,32 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onOpenLegal, o
         </div>
 
         <div className="space-y-2 text-xs">
-          <h4 className="font-bold text-white uppercase tracking-wider text-xs mb-3">Categorías</h4>
+          <h4 className="font-bold text-white uppercase tracking-wider text-xs mb-3">{tr('Categorías', 'Categories')}</h4>
           <ul className="space-y-2 text-gray-400">
             {['Tecnología', 'Hogar y Cocina', 'Moda y Calzado', 'Belleza y Cuidado', 'Deportes y Aire Libre', 'Accesorios'].map((c) => (
               <li key={c}>
-                <button onClick={() => onSelectCategory(c)} className={linkClass}>{c}</button>
+                <button onClick={() => onSelectCategory(c)} className={linkClass}>{cat(c)}</button>
               </li>
             ))}
           </ul>
         </div>
 
         <div className="space-y-2 text-xs">
-          <h4 className="font-bold text-white uppercase tracking-wider text-xs mb-3">Ayuda</h4>
+          <h4 className="font-bold text-white uppercase tracking-wider text-xs mb-3">{tr('Ayuda', 'Help')}</h4>
           <ul className="space-y-2 text-gray-400">
-            <li><button onClick={onOpenOrders} className={linkClass}>Consultar mi pedido</button></li>
-            <li><button onClick={() => onOpenLegal('returns')} className={linkClass}>Envíos y devoluciones</button></li>
-            <li><button onClick={() => onOpenLegal('terms')} className={linkClass}>Términos y condiciones</button></li>
-            <li><button onClick={() => onOpenLegal('privacy')} className={linkClass}>Política de privacidad</button></li>
+            <li><button onClick={onOpenOrders} className={linkClass}>{tr('Consultar mi pedido', 'Track my order')}</button></li>
+            <li><button onClick={() => onOpenLegal('returns')} className={linkClass}>{tr('Envíos y devoluciones', 'Shipping & returns')}</button></li>
+            <li><button onClick={() => onOpenLegal('terms')} className={linkClass}>{tr('Términos y condiciones', 'Terms & conditions')}</button></li>
+            <li><button onClick={() => onOpenLegal('privacy')} className={linkClass}>{tr('Política de privacidad', 'Privacy policy')}</button></li>
           </ul>
         </div>
       </div>
 
       <div className="border-t border-gray-800 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-          <p>© {new Date().getFullYear()} TemaShop. Todos los derechos reservados.</p>
+          <div className="flex items-center gap-3"><p>© {new Date().getFullYear()} TemaShop. {tr('Todos los derechos reservados.', 'All rights reserved.')}</p><LanguageToggle dark /></div>
           <div className="flex items-center gap-3">
-            <span className="text-gray-400">Aceptamos</span>
+            <span className="text-gray-400">{tr('Aceptamos', 'We accept')}</span>
             <PaymentMethods compact />
           </div>
         </div>
