@@ -15,6 +15,7 @@ import { Footer } from './components/Footer';
 import { LegalModal, LegalPage } from './components/LegalModal';
 import { GuaranteeStrip, HowToBuy, PaymentMethods, FAQ, WhatsAppButton, Newsletter } from './components/StoreInfo';
 import { useLang } from './i18n';
+import { ProductReviews } from './components/ProductReviews';
 import { Product, CartItem, User, Order, StoreSettings } from './types';
 import {
   getStoredCart,
@@ -189,6 +190,9 @@ export default function App() {
           availability: p.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
           itemCondition: 'https://schema.org/NewCondition',
         },
+        aggregateRating: p.reviewsCount > 0
+          ? { '@type': 'AggregateRating', ratingValue: p.rating.toFixed(1), reviewCount: p.reviewsCount }
+          : undefined,
       });
       document.head.appendChild(ld);
     } else {
@@ -752,6 +756,21 @@ export default function App() {
         product={selectedProductForDetail}
         related={relatedProducts}
         onOpenProduct={openProduct}
+        reviewsSlot={selectedProductForDetail ? (
+          <ProductReviews
+            product={selectedProductForDetail}
+            currentUser={currentUser}
+            orders={orders.filter((o) =>
+              !!currentUser && (o.userId === currentUser.id || o.customerEmail.toLowerCase() === currentUser.email.toLowerCase())
+            )}
+            onOpenAuth={() => { setSelectedProductForDetail(null); openAuth('login'); }}
+            onStatsChange={(id, rating, count) => {
+              const upd = (p: Product) => (p.id === id ? { ...p, rating, reviewsCount: count } : p);
+              setProducts((prev) => prev.map(upd));
+              setSelectedProductForDetail((cur) => (cur ? upd(cur) : cur));
+            }}
+          />
+        ) : null}
         onClose={() => setSelectedProductForDetail(null)}
         onAddToCart={(p, qty) => handleAddToCart(p, qty)}
         onBuyNow={(p, qty) => handleBuyNow(p, qty)}
