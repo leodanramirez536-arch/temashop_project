@@ -57,7 +57,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             Oferta
           </span>
         )}
-        {product.badge && (
+        {product.badge && !(product.isFlashDeal && /^oferta/i.test(product.badge.trim())) && (
           <span className="bg-blue-950/90 text-white text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-xs uppercase tracking-wide">
             {product.badge}
           </span>
