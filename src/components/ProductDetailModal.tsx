@@ -27,6 +27,7 @@ interface ProductDetailModalProps {
   isWishlisted?: boolean;
   onToggleWishlist?: (product: Product) => void;
   related?: Product[];
+  reviewsSlot?: React.ReactNode;
   onOpenProduct?: (product: Product) => void;
 }
 
@@ -38,6 +39,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   isWishlisted = false,
   onToggleWishlist,
   related = [],
+  reviewsSlot,
   onOpenProduct,
 }) => {
   const { tr, cat, delivery } = useLang();
@@ -309,6 +311,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <Link2 className="w-3.5 h-3.5" /> {tr('Enlace copiado', 'Link copied')}
           </div>
         )}
+
+        {reviewsSlot}
 
         {related.length > 0 && onOpenProduct && (
           <div className="border-t border-slate-200 bg-slate-50/70 p-5 sm:p-6">

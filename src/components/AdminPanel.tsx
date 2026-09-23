@@ -34,6 +34,9 @@ import {
   PAYMENT_METHOD_LABELS,
   fetchSubscribers,
   Subscriber,
+  fetchAllReviews,
+  deleteReview,
+  Review,
 } from '../lib/api';
 import { formatMoney } from '../config';
 
@@ -99,7 +102,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onRefresh,
   onOpenAuthForAdmin,
 }) => {
-  const [mainTab, setMainTab] = useState<'inventory' | 'create' | 'orders' | 'analytics' | 'subscribers'>('inventory');
+  const [mainTab, setMainTab] = useState<'inventory' | 'create' | 'orders' | 'analytics' | 'subscribers' | 'reviews'>('inventory');
+  const [allReviews, setAllReviews] = useState<Review[] | null>(null);
+  const [reviewsError, setReviewsError] = useState('');
+  useEffect(() => {
+    if (mainTab !== 'reviews' || allReviews) return;
+    fetchAllReviews().then(setAllReviews).catch((e) => setReviewsError(e?.message || 'No se pudieron cargar las reseñas.'));
+  }, [mainTab, allReviews]);
   const [subscribers, setSubscribers] = useState<Subscriber[] | null>(null);
   const [subsError, setSubsError] = useState('');
   const [subsCopied, setSubsCopied] = useState(false);
@@ -452,6 +461,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               >
                 <Package className="w-4 h-4" />
                 <span>Suscriptores{subscribers ? ` (${subscribers.length})` : ''}</span>
+              </button>
+
+              <button
+                id="tab-btn-reviews"
+                onClick={() => setMainTab('reviews')}
+                className={`py-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition-colors ${
+                  mainTab === 'reviews'
+                    ? 'border-blue-900 text-blue-900'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Reseñas{allReviews ? ` (${allReviews.length})` : ''}</span>
               </button>
             </div>
 
@@ -991,6 +1013,48 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {/* TAB 4: RENDIMIENTO Y GRÁFICOS (RECHARTS) */}
               {mainTab === 'analytics' && (
                 <AdminAnalytics products={products} orders={orders} />
+              )}
+
+              {/* TAB 6: RESEÑAS */}
+              {mainTab === 'reviews' && (
+                <div className="space-y-3 text-xs">
+                  <p className="text-slate-600">
+                    Solo pueden opinar clientes con cuenta cuyo pedido de ese producto está marcado como <strong>Entregado</strong>.
+                    Aquí puedes eliminar una reseña ofensiva o que no sea sobre el producto.
+                  </p>
+                  {reviewsError && <p className="text-red-700 font-semibold">{reviewsError}</p>}
+                  {!allReviews && !reviewsError && <p className="text-slate-500">Cargando...</p>}
+                  {allReviews && allReviews.length === 0 && <p className="text-slate-500">Todavía no hay reseñas.</p>}
+                  {allReviews && allReviews.length > 0 && (
+                    <div className="border border-slate-200 rounded-2xl divide-y divide-slate-100 bg-white">
+                      {allReviews.map((r) => (
+                        <div key={r.id} className="px-4 py-3 flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-800">
+                              {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)} · {r.authorName}
+                              <span className="font-normal text-slate-400"> · {products.find((p) => p.id === r.productId)?.title || r.productId}</span>
+                            </p>
+                            {r.comment && <p className="text-slate-600 mt-1 whitespace-pre-line">{r.comment}</p>}
+                            <p className="text-slate-400 mt-1">{new Date(r.createdAt).toLocaleDateString('es-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await deleteReview(r.id);
+                                setAllReviews((prev) => (prev || []).filter((x) => x.id !== r.id));
+                              } catch (e: any) {
+                                setReviewsError(e?.message || 'No se pudo eliminar.');
+                              }
+                            }}
+                            className="flex-shrink-0 text-red-600 hover:text-red-800 font-bold flex items-center gap-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Eliminar
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* TAB 5: LISTA DE CORREOS */}

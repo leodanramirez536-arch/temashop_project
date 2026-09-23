@@ -366,3 +366,67 @@ export async function fetchSubscribers(): Promise<Subscriber[]> {
   if (error) fail(error);
   return (data || []).map((r: any) => ({ email: r.email, lang: r.lang, createdAt: new Date(r.created_at).getTime() }));
 }
+
+// ---------------- Reseñas verificadas ----------------
+export interface Review {
+  id: number;
+  productId: string;
+  userId: string;
+  authorName: string;
+  rating: number;
+  comment: string;
+  createdAt: number;
+}
+
+const mapReview = (r: any): Review => ({
+  id: Number(r.id),
+  productId: r.product_id,
+  userId: r.user_id,
+  authorName: r.author_name,
+  rating: Number(r.rating),
+  comment: r.comment || '',
+  createdAt: new Date(r.created_at).getTime(),
+});
+
+export async function fetchReviews(productId: string): Promise<Review[]> {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*')
+    .eq('product_id', productId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) fail(error);
+  return (data || []).map(mapReview);
+}
+
+export async function fetchAllReviews(): Promise<Review[]> {
+  const { data, error } = await supabase.from('reviews').select('*').order('created_at', { ascending: false }).limit(500);
+  if (error) fail(error);
+  return (data || []).map(mapReview);
+}
+
+export async function addReview(input: { productId: string; authorName: string; rating: number; comment: string }): Promise<Review> {
+  const { data, error } = await supabase
+    .from('reviews')
+    .insert({
+      product_id: input.productId,
+      author_name: input.authorName.trim().slice(0, 60),
+      rating: Math.min(5, Math.max(1, Math.round(input.rating))),
+      comment: input.comment.trim().slice(0, 1000),
+    })
+    .select('*')
+    .single();
+  if (error) {
+    if (/duplicate|unique|23505/i.test(`${error.code} ${error.message}`))
+      throw new ApiError(trNow('Ya dejaste una reseña para este producto.', 'You already reviewed this product.'));
+    if (/row-level security|42501/i.test(`${error.code} ${error.message}`))
+      throw new ApiError(trNow('Solo puedes opinar sobre productos que ya recibiste.', 'You can only review products you have received.'));
+    fail(error);
+  }
+  return mapReview(data);
+}
+
+export async function deleteReview(id: number): Promise<void> {
+  const { error } = await supabase.from('reviews').delete().eq('id', id);
+  if (error) fail(error);
+}
