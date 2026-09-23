@@ -312,6 +312,7 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   cash_on_delivery: 'Efectivo contra entrega',
   zelle: 'Zelle',
   cashapp: 'Cash App',
+  transferencia_rd: 'Transferencia bancaria (RD)',
 };
 
 // Versiones en inglés (para la tienda pública)
@@ -334,6 +335,7 @@ export const PAYMENT_METHOD_LABELS_EN: Record<string, string> = {
   cash_on_delivery: 'Cash on delivery',
   zelle: 'Zelle',
   cashapp: 'Cash App',
+  transferencia_rd: 'Bank transfer (DR)',
 };
 
 export const orderStatusLabel = (s: OrderStatus, lang: 'en' | 'es') =>
