@@ -16,6 +16,7 @@ import { LegalModal, LegalPage } from './components/LegalModal';
 import { GuaranteeStrip, HowToBuy, PaymentMethods, FAQ, WhatsAppButton, Newsletter } from './components/StoreInfo';
 import { useLang } from './i18n';
 import { ProductReviews } from './components/ProductReviews';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Product, CartItem, User, Order, StoreSettings } from './types';
 import {
   getStoredCart,
@@ -738,6 +739,18 @@ export default function App() {
       {/* MODALS & DRAWERS */}
 
       {/* Wishlist Modal */}
+      <ErrorBoundary
+        onReset={() => {
+          setIsWishlistOpen(false);
+          setSelectedProductForDetail(null);
+          setIsCartOpen(false);
+          setIsCheckoutOpen(false);
+          setIsAdminOpen(false);
+          setIsAuthOpen(false);
+          setIsOrdersOpen(false);
+          setLegalPage(null);
+        }}
+      >
       <WishlistModal
         isOpen={isWishlistOpen}
         onClose={() => setIsWishlistOpen(false)}
@@ -761,7 +774,7 @@ export default function App() {
             product={selectedProductForDetail}
             currentUser={currentUser}
             orders={orders.filter((o) =>
-              !!currentUser && (o.userId === currentUser.id || o.customerEmail.toLowerCase() === currentUser.email.toLowerCase())
+              !!currentUser && (o.userId === currentUser.id || (o.customerEmail || '').toLowerCase() === (currentUser.email || '').toLowerCase())
             )}
             onOpenAuth={() => { setSelectedProductForDetail(null); openAuth('login'); }}
             onStatsChange={(id, rating, count) => {
@@ -849,6 +862,7 @@ export default function App() {
       <WhatsAppButton />
 
       <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />
+      </ErrorBoundary>
 
     </div>
   );
