@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, CheckCircle2, Truck, Lock, Package, Banknote, AlertCircle, CreditCard, Clock } from 'lucide-react';
+import { X, CheckCircle2, Truck, Lock, Package, Banknote, AlertCircle, CreditCard, Clock, Landmark } from 'lucide-react';
 import { CartItem, Order, User, StoreSettings, PaymentMethod } from '../types';
 import { placeOrder, paypalCreateOrder, paypalCaptureOrder, checkCoupon, paymentMethodLabel } from '../lib/api';
-import { PAYPAL_CLIENT_ID, ZELLE_RECIPIENT, CASHAPP_TAG, formatMoney } from '../config';
+import { PAYPAL_CLIENT_ID, ZELLE_RECIPIENT, CASHAPP_TAG, BANK_ACCOUNTS, formatMoney } from '../config';
 import { useLang, trNow } from '../i18n';
 import { PaymentInstructions } from './PaymentInstructions';
 import type { LegalPage } from './LegalModal';
@@ -66,6 +66,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       info: tr('Al confirmar te mostramos a dónde enviar el pago por Zelle. Preparamos tu pedido cuando recibimos el pago.', 'After you confirm, we\'ll show you where to send your Zelle payment. We prepare your order once payment arrives.') }] : []),
     ...(CASHAPP_TAG ? [{ id: 'cashapp' as PaymentMethod, title: 'Cash App', subtitle: CASHAPP_TAG,
       info: tr('Al confirmar te mostramos el enlace para pagar con Cash App. Preparamos tu pedido cuando recibimos el pago.', 'After you confirm, we\'ll show you a Cash App payment link. We prepare your order once payment arrives.') }] : []),
+    ...(BANK_ACCOUNTS.length ? [{ id: 'transferencia_rd' as PaymentMethod, title: tr('Transferencia', 'Bank transfer'), subtitle: BANK_ACCOUNTS.length === 1 ? BANK_ACCOUNTS[0].bank : tr('Bancos de RD', 'Dominican banks'),
+      info: tr(`Paga por transferencia o depósito desde tu banco en República Dominicana (${BANK_ACCOUNTS.map((b) => b.bank).join(', ')}). Al confirmar te mostramos los números de cuenta. Preparamos tu pedido cuando recibimos el pago.`, `Pay by transfer or deposit from your bank in the Dominican Republic (${BANK_ACCOUNTS.map((b) => b.bank).join(', ')}). After you confirm, we'll show you the account numbers. We prepare your order once payment arrives.`) }] : []),
     { id: 'cash_on_delivery', title: tr('Efectivo', 'Cash'), subtitle: tr('Al recibir', 'On delivery'),
       info: tr('Pagas en efectivo al recibir tu pedido. Te contactaremos por teléfono o WhatsApp para confirmar la entrega.', 'Pay cash when your order arrives. We\'ll contact you by phone or WhatsApp to confirm delivery.') },
   ];
@@ -307,7 +309,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       paymentMethod === m.id ? 'border-blue-900 bg-blue-50 text-blue-950 ring-2 ring-blue-200' : 'border-slate-200 hover:border-slate-300 text-slate-600'
                     }`}
                   >
-                    {m.id === 'paypal' ? <CreditCard className="w-5 h-5 text-blue-700" /> : m.id === 'cash_on_delivery' ? <Banknote className="w-5 h-5 text-emerald-600" /> : <span className={`font-black text-base ${m.id === 'zelle' ? 'text-purple-700' : 'text-emerald-600'}`}>{m.id === 'zelle' ? 'Z' : '$'}</span>}
+                    {m.id === 'paypal' ? <CreditCard className="w-5 h-5 text-blue-700" /> : m.id === 'cash_on_delivery' ? <Banknote className="w-5 h-5 text-emerald-600" /> : m.id === 'transferencia_rd' ? <Landmark className="w-5 h-5 text-sky-700" /> : <span className={`font-black text-base ${m.id === 'zelle' ? 'text-purple-700' : 'text-emerald-600'}`}>{m.id === 'zelle' ? 'Z' : '$'}</span>}
                     <span>{m.title}</span>
                     <span className="font-medium text-[10px] text-slate-500 truncate max-w-full">{m.subtitle}</span>
                   </button>
@@ -407,7 +409,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <p className="text-xs text-slate-500 max-w-md mx-auto">
                 {order.paymentStatus === 'pagado'
                   ? tr('Recibimos tu pago. Te contactaremos para coordinar la entrega.', "We received your payment. We'll contact you to arrange delivery.")
-                  : order.paymentMethod === 'zelle' || order.paymentMethod === 'cashapp'
+                  : order.paymentMethod === 'zelle' || order.paymentMethod === 'cashapp' || order.paymentMethod === 'transferencia_rd'
                     ? tr('Tu pedido está reservado. Completa el pago con los datos de abajo.', 'Your order is reserved. Complete the payment using the details below.')
                     : tr('Recibimos tu pedido. Te contactaremos por teléfono o WhatsApp para confirmar la entrega.', "We received your order. We'll contact you by phone or WhatsApp to confirm delivery.")}
               </p>

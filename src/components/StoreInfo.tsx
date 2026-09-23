@@ -12,8 +12,9 @@ import {
   MessageCircle,
   Mail,
   Lock,
+  Landmark,
 } from 'lucide-react';
-import { CONTACT_EMAIL, CONTACT_WHATSAPP, RETURN_DAYS, formatMoneyShort } from '../config';
+import { CONTACT_EMAIL, CONTACT_WHATSAPP, RETURN_DAYS, BANK_ACCOUNTS, formatMoneyShort } from '../config';
 import { useLang } from '../i18n';
 import { subscribeEmail } from '../lib/api';
 
@@ -142,6 +143,7 @@ export const PaymentMethods: React.FC<{ compact?: boolean }> = ({ compact = fals
     { name: tr('Tarjeta', 'Card'), detail: tr('Débito o crédito', 'Debit or credit'), icon: <CreditCard className="w-5 h-5" />, color: 'text-blue-700 bg-blue-50' },
     { name: 'Zelle', detail: tr('Transferencia directa', 'Bank transfer'), icon: <Smartphone className="w-5 h-5" />, color: 'text-violet-700 bg-violet-50' },
     { name: 'Cash App', detail: tr('Pago desde tu app', 'Pay from the app'), icon: <Smartphone className="w-5 h-5" />, color: 'text-emerald-700 bg-emerald-50' },
+    ...(BANK_ACCOUNTS.length ? [{ name: tr('Transferencia RD', 'DR bank transfer'), detail: BANK_ACCOUNTS.map((b) => b.bank).join(', '), icon: <Landmark className="w-5 h-5" />, color: 'text-sky-700 bg-sky-50' }] : []),
     { name: tr('Efectivo', 'Cash'), detail: tr('Pagas al recibir', 'Pay on delivery'), icon: <Banknote className="w-5 h-5" />, color: 'text-amber-700 bg-amber-50' },
   ];
 

@@ -33,7 +33,7 @@ const TermsEs = () => (
     <H>2. Pedidos</H>
     <p>Un pedido se considera aceptado cuando lo confirmamos. Podemos cancelar un pedido si el producto se agotó, si no podemos verificar los datos de entrega o si detectamos un uso fraudulento. Si ya pagaste, te devolvemos el importe completo.</p>
     <H>3. Pagos</H>
-    <p>Aceptamos tarjeta de débito o crédito y PayPal (procesados por PayPal), Zelle, Cash App y efectivo contra entrega. {STORE_NAME} no recibe ni guarda los datos de tu tarjeta. En pagos por Zelle o Cash App, el pedido se prepara cuando confirmamos que el pago llegó; si no recibimos el pago en 48 horas, el pedido puede cancelarse.</p>
+    <p>Aceptamos tarjeta de débito o crédito y PayPal (procesados por PayPal), Zelle, Cash App, transferencia bancaria en República Dominicana y efectivo contra entrega. {STORE_NAME} no recibe ni guarda los datos de tu tarjeta. En pagos por Zelle, Cash App o transferencia bancaria, el pedido se prepara cuando confirmamos que el pago llegó; si no recibimos el pago en 48 horas, el pedido puede cancelarse.</p>
     <H>4. Envíos</H>
     <p>El tiempo estimado de entrega es de {DELIVERY_ES} desde la confirmación. Es una estimación y puede variar por causas ajenas a nosotros. Consulta la Política de Envíos y Devoluciones.</p>
     <H>5. Cuentas</H>
@@ -72,7 +72,7 @@ const ReturnsEs = () => (
     <p>Puedes solicitar una devolución dentro de los {RETURN_DAYS} días siguientes a la entrega. El producto debe estar sin usar, en su empaque original y con todos sus accesorios.</p>
     <p>Si el producto llegó dañado, defectuoso o no corresponde con lo que pediste, avísanos dentro de las 48 horas siguientes a la entrega y lo cambiamos o te devolvemos el dinero sin costo para ti.</p>
     <H>Reembolsos</H>
-    <p>Una vez recibido y revisado el producto devuelto, hacemos el reembolso por el mismo medio de pago: a tu tarjeta o cuenta PayPal si pagaste con tarjeta, por Zelle o Cash App si pagaste por esos medios, o por transferencia si pagaste en efectivo.</p>
+    <p>Una vez recibido y revisado el producto devuelto, hacemos el reembolso por el mismo medio de pago: a tu tarjeta o cuenta PayPal si pagaste con tarjeta, por Zelle, Cash App o transferencia si pagaste por esos medios, o por transferencia si pagaste en efectivo.</p>
     <H>Cancelaciones</H>
     <p>Puedes cancelar tu pedido sin costo antes de que sea enviado.</p>
     <H>Cómo solicitarla</H>
@@ -89,7 +89,7 @@ const TermsEn = () => (
     <H>2. Orders</H>
     <p>An order is accepted once we confirm it. We may cancel an order if the item is out of stock, if we cannot verify the delivery details, or if we detect fraudulent use. If you already paid, we refund the full amount.</p>
     <H>3. Payments</H>
-    <p>We accept debit or credit cards and PayPal (processed by PayPal), Zelle, Cash App and cash on delivery. {STORE_NAME} never receives or stores your card details. For Zelle or Cash App payments, we prepare your order once we confirm the payment arrived; if payment is not received within 48 hours, the order may be canceled.</p>
+    <p>We accept debit or credit cards and PayPal (processed by PayPal), Zelle, Cash App, bank transfer in the Dominican Republic and cash on delivery. {STORE_NAME} never receives or stores your card details. For Zelle, Cash App or bank transfer payments, we prepare your order once we confirm the payment arrived; if payment is not received within 48 hours, the order may be canceled.</p>
     <H>4. Shipping</H>
     <p>Estimated delivery time is {DELIVERY_EN} after confirmation. This is an estimate and may vary due to circumstances beyond our control. See our Shipping &amp; Returns Policy.</p>
     <H>5. Accounts</H>
@@ -128,7 +128,7 @@ const ReturnsEn = () => (
     <p>You can request a return within {RETURN_DAYS} days of delivery. Items must be unused, in their original packaging and with all accessories.</p>
     <p>If your item arrived damaged, defective or not as ordered, let us know within 48 hours of delivery and we will replace it or refund you at no cost to you.</p>
     <H>Refunds</H>
-    <p>Once we receive and inspect the returned item, we refund you using the same payment method: to your card or PayPal account if you paid by card, via Zelle or Cash App if you paid that way, or by bank transfer if you paid in cash.</p>
+    <p>Once we receive and inspect the returned item, we refund you using the same payment method: to your card or PayPal account if you paid by card, via Zelle, Cash App or bank transfer if you paid that way, or by bank transfer if you paid in cash.</p>
     <H>Cancellations</H>
     <p>You can cancel your order at no cost before it ships.</p>
     <H>How to request one</H>
