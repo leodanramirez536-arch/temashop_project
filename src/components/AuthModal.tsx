@@ -170,12 +170,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex p-4">
       <div
         id="auth-modal-container"
         role="dialog"
         aria-modal="true"
-        className="relative bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200"
+        className="m-auto relative bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200"
       >
         <div className="p-6 bg-gradient-to-r from-blue-950 via-blue-900 to-slate-900 text-white relative">
           <button

@@ -291,10 +291,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 lg:p-6">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex p-2 sm:p-4 lg:p-6">
       <div 
         id="admin-panel-container"
-        className="relative bg-white rounded-3xl max-w-5xl w-full overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[94vh]"
+        className="m-auto relative bg-white rounded-3xl max-w-5xl w-full overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[94vh]"
       >
         {/* Top Header */}
         <div className="p-4 sm:p-5 bg-gradient-to-r from-blue-950 via-blue-900 to-slate-900 text-white flex items-center justify-between shadow-sm">

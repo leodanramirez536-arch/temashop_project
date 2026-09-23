@@ -153,11 +153,11 @@ export const LegalModal: React.FC<LegalModalProps> = ({ page, onClose }) => {
   if (!page) return null;
   const en = lang === 'en';
   return (
-    <div className="fixed inset-0 z-[60] overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex p-4" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
-        className="relative bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[85vh]"
+        className="m-auto relative bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">

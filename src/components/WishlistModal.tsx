@@ -45,10 +45,10 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
   const inStockWishlistProducts = wishlistProducts.filter((p) => p.stock > 0);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex p-3 sm:p-4">
       <div 
         id="wishlist-modal-container"
-        className="relative bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
+        className="m-auto relative bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950 text-white p-4 sm:p-6 flex items-center justify-between border-b border-blue-900">
