@@ -40,7 +40,7 @@ export interface OrderItem {
 
 export type OrderStatus = 'pendiente' | 'confirmado' | 'enviado' | 'entregado' | 'cancelado';
 export type PaymentStatus = 'pendiente' | 'pagado' | 'reembolsado';
-export type PaymentMethod = 'paypal' | 'cash_on_delivery' | 'zelle' | 'cashapp';
+export type PaymentMethod = 'paypal' | 'cash_on_delivery' | 'zelle' | 'cashapp' | 'transferencia_rd';
 
 export interface Order {
   id: string;

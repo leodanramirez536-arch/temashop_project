@@ -18,6 +18,23 @@ export const ZELLE_RECIPIENT: string = env.VITE_ZELLE_RECIPIENT || ''; // correo
 export const ZELLE_NAME: string = env.VITE_ZELLE_NAME || '';           // nombre que verá el cliente en Zelle
 export const CASHAPP_TAG: string = (env.VITE_CASHAPP_TAG || '').replace(/^\$?/, env.VITE_CASHAPP_TAG ? '$' : ''); // ej: $MiTienda
 
+// Transferencia bancaria en República Dominicana. Si VITE_BANK_ACCOUNTS está vacío, no aparece en el pago.
+// Formato: una cuenta por bloque separado con ";" y campos separados con "|":
+//   Banco|Tipo de cuenta|Número|Moneda
+//   ej: Banreservas|Ahorros|9600123456|DOP;Banco Popular|Corriente|812345678|DOP;BHD|Ahorros|12345670011|DOP
+export type BankAccount = { bank: string; type: string; number: string; currency: string };
+export const BANK_ACCOUNTS: BankAccount[] = String(env.VITE_BANK_ACCOUNTS || '')
+  .split(';')
+  .map((b: string) => b.split('|').map((x) => x.trim()))
+  .filter((f: string[]) => f[0] && f[2])
+  .map(([bank, type, number, currency]: string[]) => ({ bank, type: type || '', number, currency: (currency || 'DOP').toUpperCase() }));
+export const BANK_HOLDER: string = env.VITE_BANK_HOLDER || '';       // nombre del titular de las cuentas
+export const BANK_HOLDER_ID: string = env.VITE_BANK_HOLDER_ID || ''; // cédula o RNC del titular
+// Tasa US$ → RD$ para mostrar el monto en pesos (ej: 63.50). Si está vacía, solo se muestra el monto en US$.
+export const DOP_RATE: number = Number(env.VITE_DOP_RATE || 0);
+export const formatDOP = (usd: number) =>
+  `RD$${(Math.ceil((Number(usd) || 0) * DOP_RATE * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 // Días para solicitar una devolución (debe coincidir con tu política real)
 export const RETURN_DAYS = Number(env.VITE_RETURN_DAYS || 7);
 
