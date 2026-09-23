@@ -13,6 +13,7 @@ import { WishlistModal } from './components/WishlistModal';
 import { Footer } from './components/Footer';
 import { LegalModal, LegalPage } from './components/LegalModal';
 import { GuaranteeStrip, HowToBuy, PaymentMethods, FAQ, WhatsAppButton } from './components/StoreInfo';
+import { useLang } from './i18n';
 import { Product, CartItem, User, Order, StoreSettings } from './types';
 import {
   getStoredCart,
@@ -47,6 +48,7 @@ import {
 } from 'lucide-react';
 
 export default function App() {
+  const { tr, lang, cat } = useLang();
   // Application Data States
   const [products, setProducts] = useState<Product[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -95,7 +97,7 @@ export default function App() {
         return synced;
       });
     } catch (err: any) {
-      setLoadError(err?.message || 'No se pudieron cargar los productos.');
+      setLoadError(err?.message || tr('No se pudieron cargar los productos.', 'Could not load products.'));
     } finally {
       setIsLoadingProducts(false);
     }
@@ -170,7 +172,8 @@ export default function App() {
     }
 
     updateCartState(updatedCart);
-    showToast(`Añadido a tu bolsa: ${product.title.length > 28 ? product.title.slice(0, 28) + '…' : product.title}`);
+    const name = lang === 'en' && product.titleEn ? product.titleEn : product.title;
+    showToast(`${tr('Añadido a tu bolsa', 'Added to cart')}: ${name.length > 28 ? name.slice(0, 28) + '…' : name}`);
   };
 
   const handleUpdateCartQuantity = (productId: string, quantity: number) => {
@@ -191,7 +194,7 @@ export default function App() {
   const handleRemoveCartItem = (productId: string) => {
     const updated = cart.filter((item) => item.product.id !== productId);
     updateCartState(updated);
-    showToast('Artículo retirado de la bolsa');
+    showToast(tr('Artículo retirado de la bolsa', 'Item removed from cart'));
   };
 
   const handleClearCart = () => {
@@ -219,7 +222,7 @@ export default function App() {
     if (!currentUser) addGuestOrderRef({ orderNumber: newOrder.orderNumber, email: newOrder.customerEmail });
     handleClearCart();
     loadProducts();
-    showToast(`Pedido ${newOrder.orderNumber} recibido`);
+    showToast(tr(`Pedido ${newOrder.orderNumber} recibido`, `Order ${newOrder.orderNumber} received`));
   };
 
   const handleOrderUpdated = (updated: Order) => {
@@ -229,14 +232,14 @@ export default function App() {
   // Auth Operations
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
-    showToast(`Bienvenido: ${user.name}`);
+    showToast(`${tr('Bienvenido', 'Welcome')}, ${user.name}`);
   };
 
   const handleLogout = async () => {
     await signOut();
     setCurrentUser(null);
     setIsAdminOpen(false);
-    showToast('Has cerrado sesión correctamente');
+    showToast(tr('Has cerrado sesión', 'You have signed out'));
   };
 
   const openAuth = (mode: 'login' | 'register' = 'login') => {
@@ -255,23 +258,23 @@ export default function App() {
     const updated = toggleProductInWishlist(product.id);
     setWishlist(updated);
     if (isCurrentlyWishlisted) {
-      showToast('Eliminado de tu lista de favoritos');
+      showToast(tr('Eliminado de tus favoritos', 'Removed from favorites'));
     } else {
-      showToast('Guardado en tus favoritos');
+      showToast(tr('Guardado en tus favoritos', 'Saved to favorites'));
     }
   };
 
   const handleClearWishlist = () => {
     saveStoredWishlist([]);
     setWishlist([]);
-    showToast('Lista de favoritos vaciada');
+    showToast(tr('Favoritos vaciados', 'Favorites cleared'));
   };
 
   const handleAddAllWishlistToCart = (productsToAdd: Product[]) => {
     productsToAdd.forEach((p) => {
       handleAddToCart(p, 1);
     });
-    showToast(`¡${productsToAdd.length} artículos añadidos a la Bolsa!`);
+    showToast(tr(`${productsToAdd.length} artículos añadidos a la bolsa`, `${productsToAdd.length} items added to cart`));
   };
 
   // Filtered & Sorted Products List
@@ -291,7 +294,10 @@ export default function App() {
       result = result.filter(
         (p) =>
           p.title.toLowerCase().includes(q) ||
+          (p.titleEn || '').toLowerCase().includes(q) ||
           p.description.toLowerCase().includes(q) ||
+          (p.descriptionEn || '').toLowerCase().includes(q) ||
+          cat(p.category).toLowerCase().includes(q) ||
           p.category.toLowerCase().includes(q)
       );
     }
@@ -323,7 +329,7 @@ export default function App() {
     }
 
     return result;
-  }, [products, selectedCategory, searchQuery, sortBy]);
+  }, [products, selectedCategory, searchQuery, sortBy, lang]);
 
   const scrollToCatalog = () => {
     const el = document.getElementById('catalog-section');
@@ -412,7 +418,7 @@ export default function App() {
                 onClick={() => { setIsLoadingProducts(true); loadProducts(); }}
                 className="bg-blue-900 hover:bg-blue-800 text-amber-400 font-bold text-xs py-2.5 px-6 rounded-xl"
               >
-                Reintentar
+                {tr('Reintentar', 'Try again')}
               </button>
             </div>
           ) : filteredProducts.length === 0 ? (
@@ -421,14 +427,14 @@ export default function App() {
                 <ShoppingBag className="w-8 h-8" />
               </div>
               <h3 className="text-base sm:text-lg font-bold text-gray-900">
-                No se encontraron productos
+                {tr('No se encontraron productos', 'No products found')}
               </h3>
               <p className="text-xs text-gray-500">
                 {products.length === 0
-                  ? 'Pronto agregaremos productos. ¡Vuelve en unos días!'
+                  ? tr('Pronto agregaremos productos. ¡Vuelve en unos días!', "We're adding products soon. Check back in a few days!")
                   : searchQuery.trim()
-                    ? `No hay artículos que coincidan con "${searchQuery}" en "${selectedCategory}".`
-                    : `No hay artículos en "${selectedCategory}" por ahora.`}
+                    ? tr(`No hay artículos que coincidan con "${searchQuery}" en "${cat(selectedCategory)}".`, `No items match "${searchQuery}" in "${cat(selectedCategory)}".`)
+                    : tr(`No hay artículos en "${cat(selectedCategory)}" por ahora.`, `No items in "${cat(selectedCategory)}" right now.`)}
               </p>
               <button
                 id="reset-filter-button"
@@ -438,7 +444,7 @@ export default function App() {
                 }}
                 className="bg-blue-900 hover:bg-blue-800 text-amber-400 font-bold text-xs py-2.5 px-6 rounded-xl transition-all shadow-sm"
               >
-                Ver todos los productos
+                {tr('Ver todos los productos', 'See all products')}
               </button>
             </div>
           ) : (
@@ -500,7 +506,7 @@ export default function App() {
           }`}
         >
           <Home className={`w-5 h-5 transition-transform duration-200 ${activeMobileTab === 'home' ? 'scale-110 text-blue-950 stroke-[2.5]' : ''}`} />
-          <span className="text-[10px] mt-0.5 leading-none">Inicio</span>
+          <span className="text-[10px] mt-0.5 leading-none">{tr('Inicio', 'Home')}</span>
           <span 
             className={`w-1.5 h-1.5 rounded-full mt-1 transition-all duration-300 ${
               activeMobileTab === 'home'
@@ -528,7 +534,7 @@ export default function App() {
           }`}
         >
           <SlidersHorizontal className={`w-5 h-5 transition-transform duration-200 ${activeMobileTab === 'filters' ? 'scale-110 text-blue-950 stroke-[2.5]' : ''}`} />
-          <span className="text-[10px] mt-0.5 leading-none">Filtros</span>
+          <span className="text-[10px] mt-0.5 leading-none">{tr('Filtros', 'Browse')}</span>
           <span 
             className={`w-1.5 h-1.5 rounded-full mt-1 transition-all duration-300 ${
               activeMobileTab === 'filters'
@@ -561,7 +567,7 @@ export default function App() {
               </span>
             )}
           </div>
-          <span className="text-[10px] mt-0.5 leading-none">Deseos</span>
+          <span className="text-[10px] mt-0.5 leading-none">{tr('Favoritos', 'Saved')}</span>
           <span 
             className={`w-1.5 h-1.5 rounded-full mt-1 transition-all duration-300 ${
               activeMobileTab === 'wishlist'
@@ -594,7 +600,7 @@ export default function App() {
         >
           <LayoutDashboard className={`w-5 h-5 transition-transform duration-200 ${activeMobileTab === 'admin' ? 'scale-110 text-amber-500 stroke-[2.5]' : ''}`} />
           <span className="text-[10px] mt-0.5 leading-none">
-            {currentUser?.role === 'admin' ? 'Admin' : currentUser ? 'Cuenta' : 'Entrar'}
+            {currentUser?.role === 'admin' ? 'Admin' : currentUser ? tr('Cuenta', 'Account') : tr('Entrar', 'Sign in')}
           </span>
           <span 
             className={`w-1.5 h-1.5 rounded-full mt-1 transition-all duration-300 ${
@@ -616,7 +622,7 @@ export default function App() {
           }`}
         >
           <Package className={`w-5 h-5 transition-transform duration-200 ${activeMobileTab === 'orders' ? 'scale-110 text-blue-950 stroke-[2.5]' : ''}`} />
-          <span className="text-[10px] mt-0.5 leading-none">Pedidos</span>
+          <span className="text-[10px] mt-0.5 leading-none">{tr('Pedidos', 'Orders')}</span>
           <span 
             className={`w-1.5 h-1.5 rounded-full mt-1 transition-all duration-300 ${
               activeMobileTab === 'orders'
@@ -644,7 +650,7 @@ export default function App() {
               </span>
             )}
           </div>
-          <span className="text-[10px] mt-0.5 leading-none">Bolsa</span>
+          <span className="text-[10px] mt-0.5 leading-none">{tr('Bolsa', 'Cart')}</span>
           <span 
             className={`w-1.5 h-1.5 rounded-full mt-1 transition-all duration-300 ${
               activeMobileTab === 'cart'
@@ -738,6 +744,7 @@ export default function App() {
         orders={orders}
         currentUser={currentUser}
         onOpenAuth={() => { setIsOrdersOpen(false); openAuth('login'); }}
+        products={products}
         onGuestOrderFound={(o) => {
           addGuestOrderRef({ orderNumber: o.orderNumber, email: o.customerEmail });
           setOrders((prev) => [o, ...prev.filter((x) => x.id !== o.id)]);

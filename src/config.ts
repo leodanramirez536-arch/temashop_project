@@ -1,5 +1,7 @@
 // Configuración pública de la tienda.
 // Los valores se pueden cambiar sin tocar el código en Vercel → Settings → Environment Variables.
+import { trNow } from './i18n';
+
 const env = (import.meta as any).env || {};
 
 export const STORE_NAME = 'TemaShop';
@@ -24,7 +26,7 @@ export const DELIVERY_ESTIMATE = env.VITE_DELIVERY_ESTIMATE || '2 a 5 días háb
 
 // Monto corto: "US$25" en vez de "US$25.00" cuando no tiene centavos
 export const formatMoneyShort = (n: number) =>
-  Number.isInteger(Number(n)) ? `US$${Number(n).toLocaleString('en-US')}` : formatMoney(n);
+  Number.isInteger(Number(n)) ? `${trNow('US$', '$')}${Number(n).toLocaleString('en-US')}` : formatMoney(n);
 
 export const formatMoney = (n: number) =>
-  `US$${(Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  `${trNow('US$', '$')}${(Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
