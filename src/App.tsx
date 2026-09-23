@@ -12,6 +12,7 @@ import { OrdersModal } from './components/OrdersModal';
 import { WishlistModal } from './components/WishlistModal';
 import { Footer } from './components/Footer';
 import { LegalModal, LegalPage } from './components/LegalModal';
+import { GuaranteeStrip, HowToBuy, PaymentMethods, FAQ, WhatsAppButton } from './components/StoreInfo';
 import { Product, CartItem, User, Order, StoreSettings } from './types';
 import {
   getStoredCart,
@@ -33,7 +34,6 @@ import {
   signOut,
   DEFAULT_SETTINGS,
 } from './lib/api';
-import { DELIVERY_ESTIMATE, RETURN_DAYS } from './config';
 import { 
   ShoppingBag, 
   Zap, 
@@ -170,7 +170,7 @@ export default function App() {
     }
 
     updateCartState(updatedCart);
-    showToast(`✓ "${product.title.slice(0, 25)}..." añadido a tu bolsa`);
+    showToast(`Añadido a tu bolsa: ${product.title.length > 28 ? product.title.slice(0, 28) + '…' : product.title}`);
   };
 
   const handleUpdateCartQuantity = (productId: string, quantity: number) => {
@@ -257,7 +257,7 @@ export default function App() {
     if (isCurrentlyWishlisted) {
       showToast('Eliminado de tu lista de favoritos');
     } else {
-      showToast(`❤️ Guardado en Favoritos: ${product.title}`);
+      showToast('Guardado en tus favoritos');
     }
   };
 
@@ -325,6 +325,11 @@ export default function App() {
     return result;
   }, [products, selectedCategory, searchQuery, sortBy]);
 
+  const scrollToCatalog = () => {
+    const el = document.getElementById('catalog-section');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   // Active section for Mobile Bottom Nav
@@ -342,7 +347,7 @@ export default function App() {
       
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 bg-blue-950 text-white text-xs sm:text-sm font-semibold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-blue-800 animate-in fade-in slide-in-from-bottom-4 duration-200">
+        <div className="fixed bottom-36 sm:bottom-24 right-4 sm:right-6 z-50 bg-blue-950 text-white text-xs sm:text-sm font-semibold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-blue-800 animate-in fade-in slide-in-from-bottom-4 duration-200">
           <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
           <span>{toastMessage}</span>
         </div>
@@ -361,6 +366,7 @@ export default function App() {
         onOpenAdmin={() => setIsAdminOpen(true)}
         onOpenOrders={() => setIsOrdersOpen(true)}
         onLogout={handleLogout}
+        freeShippingThreshold={settings.freeShippingThreshold}
         onSelectCategory={(cat) => {
           setSelectedCategory(cat);
           const el = document.getElementById('catalog-section');
@@ -371,6 +377,8 @@ export default function App() {
       <main className="flex-1">
         {/* Flash Deals Hero Banner */}
         <FlashDealBanner
+          freeShippingThreshold={settings.freeShippingThreshold}
+          onShopNow={() => { setSelectedCategory('Todas'); scrollToCatalog(); }}
           onExploreDeals={() => {
             setSelectedCategory('Ofertas Flash');
             const el = document.getElementById('catalog-section');
@@ -379,7 +387,7 @@ export default function App() {
         />
 
         {/* Catalog Categories Navigation */}
-        <div id="catalog-section">
+        <div id="catalog-section" className="scroll-mt-28">
           <CategoryPills
             selectedCategory={selectedCategory}
             onSelectCategory={setSelectedCategory}
@@ -449,50 +457,13 @@ export default function App() {
           )}
         </section>
 
-        {/* Cómo compramos: información real */}
-        <section className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
-          <div className="bg-white border border-gray-200/80 rounded-3xl p-5 sm:p-8 shadow-xs grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="flex items-start gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0 border border-amber-200">
-                <Truck className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-xs sm:text-sm font-bold text-blue-950">Envío a domicilio</h4>
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                  Entrega estimada en {DELIVERY_ESTIMATE}. Envío gratis en pedidos desde US${settings.freeShippingThreshold.toFixed(2)}.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-900 flex items-center justify-center flex-shrink-0 border border-blue-200">
-                <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
-              </div>
-              <div>
-                <h4 className="text-xs sm:text-sm font-bold text-blue-950">Pago seguro</h4>
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                  Paga con tarjeta (procesada por PayPal), Zelle, Cash App o en efectivo al recibir. Nunca guardamos los datos de tu tarjeta.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-slate-100 text-blue-950 flex items-center justify-center flex-shrink-0 border border-slate-200">
-                <ShoppingBag className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-xs sm:text-sm font-bold text-blue-950">Devoluciones</h4>
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                  Tienes {RETURN_DAYS} días desde que recibes tu pedido para solicitar una devolución.{' '}
-                  <button onClick={() => setLegalPage('returns')} className="text-blue-900 font-semibold underline">
-                    Ver política
-                  </button>
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
+        <GuaranteeStrip
+          freeShippingThreshold={settings.freeShippingThreshold}
+          onOpenReturns={() => setLegalPage('returns')}
+        />
+        <HowToBuy onShopNow={scrollToCatalog} />
+        <PaymentMethods />
+        <FAQ freeShippingThreshold={settings.freeShippingThreshold} onOpenOrders={() => setIsOrdersOpen(true)} />
       </main>
 
       {/* Footer */}
@@ -772,6 +743,8 @@ export default function App() {
           setOrders((prev) => [o, ...prev.filter((x) => x.id !== o.id)]);
         }}
       />
+
+      <WhatsAppButton />
 
       <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />
 

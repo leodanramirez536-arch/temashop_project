@@ -22,5 +22,9 @@ export const RETURN_DAYS = Number(env.VITE_RETURN_DAYS || 7);
 // Tiempo estimado de entrega mostrado al cliente
 export const DELIVERY_ESTIMATE = env.VITE_DELIVERY_ESTIMATE || '2 a 5 días hábiles';
 
+// Monto corto: "US$25" en vez de "US$25.00" cuando no tiene centavos
+export const formatMoneyShort = (n: number) =>
+  Number.isInteger(Number(n)) ? `US$${Number(n).toLocaleString('en-US')}` : formatMoney(n);
+
 export const formatMoney = (n: number) =>
   `US$${(Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
