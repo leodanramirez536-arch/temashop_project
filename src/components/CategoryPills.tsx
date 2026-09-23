@@ -63,19 +63,14 @@ export const CategoryPills: React.FC<CategoryPillsProps> = ({
                 key={category}
                 id={`category-pill-${category.toLowerCase().replace(/\s+/g, '-')}`}
                 onClick={() => onSelectCategory(category)}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all select-none ${
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all select-none ${
                   isSelected
-                    ? 'bg-blue-900 text-white shadow-md shadow-blue-950/20 border border-blue-800 scale-102'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-blue-950 border border-slate-200'
+                    ? 'bg-blue-950 text-white border border-blue-950'
+                    : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-blue-950 border border-slate-200'
                 }`}
               >
                 {getCategoryIcon(category)}
                 <span>{category}</span>
-                {category === 'Ofertas Flash' && (
-                  <span className="bg-amber-500 text-blue-950 text-[9px] font-black px-1.5 rounded-full">
-                    VIP
-                  </span>
-                )}
               </button>
             );
           })}
@@ -83,8 +78,8 @@ export const CategoryPills: React.FC<CategoryPillsProps> = ({
 
         {/* Sort and Count */}
         <div className="flex items-center justify-between sm:justify-end gap-3 text-xs text-slate-500">
-          <span className="font-medium">
-            <strong className="text-blue-950">{totalProductsCount}</strong> piezas encontradas
+          <span className="font-medium whitespace-nowrap">
+            <strong className="text-blue-950">{totalProductsCount}</strong> {totalProductsCount === 1 ? 'producto' : 'productos'}
           </span>
 
           <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-xs">
@@ -95,12 +90,12 @@ export const CategoryPills: React.FC<CategoryPillsProps> = ({
               onChange={(e) => onSortChange(e.target.value)}
               className="bg-transparent text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer"
             >
-              <option value="featured">Destacados / Colección</option>
-              <option value="price_low">Precio: Menor a Mayor</option>
-              <option value="price_high">Precio: Mayor a Menor</option>
-              <option value="discount">Mayor % de Descuento</option>
-              <option value="sales">Más Vendidos</option>
-              <option value="rating">Mejor Calificación</option>
+              <option value="featured">Más recientes</option>
+              <option value="price_low">Precio: menor a mayor</option>
+              <option value="price_high">Precio: mayor a menor</option>
+              <option value="discount">Mayor descuento</option>
+              <option value="sales">Más vendidos</option>
+              <option value="rating">Mejor calificados</option>
             </select>
           </div>
         </div>
