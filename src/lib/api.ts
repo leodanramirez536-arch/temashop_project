@@ -342,3 +342,27 @@ export const paymentStatusLabel = (s: PaymentStatus, lang: 'en' | 'es') =>
   (lang === 'en' ? PAYMENT_STATUS_LABELS_EN : PAYMENT_STATUS_LABELS)[s] || s;
 export const paymentMethodLabel = (m: string, lang: 'en' | 'es') =>
   (lang === 'en' ? PAYMENT_METHOD_LABELS_EN : PAYMENT_METHOD_LABELS)[m] || m;
+
+// ---------------- Suscriptores (lista de ofertas) ----------------
+export async function subscribeEmail(email: string, lang: 'en' | 'es'): Promise<void> {
+  const clean = email.trim().toLowerCase();
+  const { error } = await supabase.from('subscribers').insert({ email: clean, lang });
+  // Si ya estaba suscrito, lo tratamos como éxito
+  if (error && !/duplicate|unique|23505/i.test(`${error.code} ${error.message}`)) fail(error);
+}
+
+export interface Subscriber {
+  email: string;
+  lang: string;
+  createdAt: number;
+}
+
+export async function fetchSubscribers(): Promise<Subscriber[]> {
+  const { data, error } = await supabase
+    .from('subscribers')
+    .select('email, lang, created_at')
+    .order('created_at', { ascending: false })
+    .limit(2000);
+  if (error) fail(error);
+  return (data || []).map((r: any) => ({ email: r.email, lang: r.lang, createdAt: new Date(r.created_at).getTime() }));
+}
