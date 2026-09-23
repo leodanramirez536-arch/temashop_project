@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { Navbar } from './components/Navbar';
 import { FlashDealBanner } from './components/FlashDealBanner';
 import { CategoryPills } from './components/CategoryPills';
@@ -6,13 +6,14 @@ import { ProductCard } from './components/ProductCard';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { CartDrawer } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
-import { AdminPanel } from './components/AdminPanel';
+// El panel de administrador (y sus gráficas) se descarga solo cuando se abre
+const AdminPanel = lazy(() => import('./components/AdminPanel').then((m) => ({ default: m.AdminPanel })));
 import { AuthModal } from './components/AuthModal';
 import { OrdersModal } from './components/OrdersModal';
 import { WishlistModal } from './components/WishlistModal';
 import { Footer } from './components/Footer';
 import { LegalModal, LegalPage } from './components/LegalModal';
-import { GuaranteeStrip, HowToBuy, PaymentMethods, FAQ, WhatsAppButton } from './components/StoreInfo';
+import { GuaranteeStrip, HowToBuy, PaymentMethods, FAQ, WhatsAppButton, Newsletter } from './components/StoreInfo';
 import { useLang } from './i18n';
 import { Product, CartItem, User, Order, StoreSettings } from './types';
 import {
@@ -141,6 +142,70 @@ export default function App() {
     });
     return unsubscribe;
   }, []);
+
+  // ---- Enlace propio por producto (?product=id), título y datos para Google ----
+  const openProduct = (p: Product) => setSelectedProductForDetail(p);
+  const [initialProductId] = useState(() => new URLSearchParams(window.location.search).get('product'));
+
+  // Abre el producto del enlace compartido cuando llegan los productos
+  useEffect(() => {
+    if (!products.length) return;
+    const id = initialProductId;
+    if (id) {
+      const found = products.find((p) => p.id === id);
+      if (found) setSelectedProductForDetail((cur) => cur || found);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products.length]);
+
+  useEffect(() => {
+    const p = selectedProductForDetail;
+    const url = new URL(window.location.href);
+    const baseTitle = tr('TemaShop | Tecnología, hogar y moda con entrega a domicilio', 'TemaShop | Electronics, Home & Fashion Delivered to Your Door');
+    const old = document.getElementById('product-jsonld');
+    if (old) old.remove();
+    if (p) {
+      url.searchParams.set('product', p.id);
+      const name = lang === 'en' && p.titleEn ? p.titleEn : p.title;
+      const desc = lang === 'en' && p.descriptionEn ? p.descriptionEn : p.description;
+      document.title = `${name} | TemaShop`;
+      const ld = document.createElement('script');
+      ld.type = 'application/ld+json';
+      ld.id = 'product-jsonld';
+      ld.text = JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name,
+        description: desc,
+        image: p.imageUrl ? [p.imageUrl] : undefined,
+        sku: p.id,
+        category: p.category,
+        brand: { '@type': 'Brand', name: 'TemaShop' },
+        offers: {
+          '@type': 'Offer',
+          url: `${window.location.origin}/?product=${encodeURIComponent(p.id)}`,
+          priceCurrency: 'USD',
+          price: p.price.toFixed(2),
+          availability: p.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+          itemCondition: 'https://schema.org/NewCondition',
+        },
+      });
+      document.head.appendChild(ld);
+    } else {
+      url.searchParams.delete('product');
+      document.title = baseTitle;
+    }
+    if (url.toString() !== window.location.href) window.history.replaceState(null, '', url.toString());
+  }, [selectedProductForDetail, lang]);
+
+  const relatedProducts = useMemo(() => {
+    const p = selectedProductForDetail;
+    if (!p) return [];
+    const others = products.filter((x) => x.id !== p.id && x.stock > 0);
+    const same = others.filter((x) => x.category === p.category);
+    const rest = others.filter((x) => x.category !== p.category).sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0));
+    return [...same, ...rest].slice(0, 4);
+  }, [selectedProductForDetail, products]);
 
   // Save cart whenever it changes
   const updateCartState = (newCart: CartItem[]) => {
@@ -373,6 +438,9 @@ export default function App() {
         onOpenOrders={() => setIsOrdersOpen(true)}
         onLogout={handleLogout}
         freeShippingThreshold={settings.freeShippingThreshold}
+        products={products}
+        onOpenProduct={openProduct}
+        onSubmitSearch={() => { setSelectedCategory('Todas'); scrollToCatalog(); }}
         onSelectCategory={(cat) => {
           setSelectedCategory(cat);
           const el = document.getElementById('catalog-section');
@@ -454,7 +522,7 @@ export default function App() {
                   key={product.id}
                   product={product}
                   onAddToCart={(p) => handleAddToCart(p, 1)}
-                  onOpenQuickView={(p) => setSelectedProductForDetail(p)}
+                  onOpenQuickView={openProduct}
                   isWishlisted={wishlist.includes(product.id)}
                   onToggleWishlist={handleToggleWishlist}
                 />
@@ -470,6 +538,7 @@ export default function App() {
         <HowToBuy onShopNow={scrollToCatalog} />
         <PaymentMethods />
         <FAQ freeShippingThreshold={settings.freeShippingThreshold} onOpenOrders={() => setIsOrdersOpen(true)} />
+        <Newsletter />
       </main>
 
       {/* Footer */}
@@ -674,12 +743,15 @@ export default function App() {
         onAddToCart={(p) => handleAddToCart(p, 1)}
         onAddAllToCart={handleAddAllWishlistToCart}
         onClearWishlist={handleClearWishlist}
-        onOpenQuickView={(p) => setSelectedProductForDetail(p)}
+        onOpenQuickView={openProduct}
       />
 
       {/* Product Detail Modal */}
       <ProductDetailModal
+        key={selectedProductForDetail?.id || 'none'}
         product={selectedProductForDetail}
+        related={relatedProducts}
+        onOpenProduct={openProduct}
         onClose={() => setSelectedProductForDetail(null)}
         onAddToCart={(p, qty) => handleAddToCart(p, qty)}
         onBuyNow={(p, qty) => handleBuyNow(p, qty)}
@@ -715,6 +787,8 @@ export default function App() {
       />
 
       {/* Admin Panel Modal */}
+      {isAdminOpen && (
+      <Suspense fallback={<div className="fixed inset-0 z-50 bg-blue-950/60 flex items-center justify-center"><div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" /></div>}>
       <AdminPanel
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
@@ -726,6 +800,8 @@ export default function App() {
         onRefresh={() => { loadProducts(); loadOrders(currentUser); }}
         onOpenAuthForAdmin={() => openAuth('login')}
       />
+      </Suspense>
+      )}
 
       {/* Local Auth Modal */}
       <AuthModal
