@@ -49,7 +49,7 @@ const PrivacyEs = () => (
   <>
     <p>En {STORE_NAME} cuidamos tus datos personales. Esta política explica qué datos recopilamos y para qué.</p>
     <H>Datos que recopilamos</H>
-    <p>Nombre, correo electrónico, teléfono y dirección de entrega cuando haces un pedido o creas una cuenta, y el detalle de tus compras.</p>
+    <p>Nombre, correo electrónico, teléfono y dirección de entrega cuando haces un pedido o creas una cuenta, y el detalle de tus compras. Si te suscribes a nuestras ofertas, guardamos tu correo para enviártelas; puedes pedir la baja en cualquier momento.</p>
     <H>Para qué los usamos</H>
     <p>Solo para procesar y entregar tus pedidos, comunicarnos contigo sobre ellos, atender devoluciones y cumplir obligaciones legales. No vendemos tus datos.</p>
     <H>Con quién los compartimos</H>
@@ -105,7 +105,7 @@ const PrivacyEn = () => (
   <>
     <p>At {STORE_NAME} we take care of your personal data. This policy explains what we collect and why.</p>
     <H>Data we collect</H>
-    <p>Your name, email, phone number and delivery address when you place an order or create an account, plus the details of your purchases.</p>
+    <p>Your name, email, phone number and delivery address when you place an order or create an account, plus the details of your purchases. If you subscribe to our deals, we keep your email to send them; you can unsubscribe at any time.</p>
     <H>How we use it</H>
     <p>Only to process and deliver your orders, contact you about them, handle returns and meet legal obligations. We do not sell your data.</p>
     <H>Who we share it with</H>
@@ -153,11 +153,11 @@ export const LegalModal: React.FC<LegalModalProps> = ({ page, onClose }) => {
   if (!page) return null;
   const en = lang === 'en';
   return (
-    <div className="fixed inset-0 z-[60] overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex p-4" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
-        className="relative bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[85vh]"
+        className="m-auto relative bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">

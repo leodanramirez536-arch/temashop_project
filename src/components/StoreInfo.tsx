@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { CONTACT_EMAIL, CONTACT_WHATSAPP, RETURN_DAYS, formatMoneyShort } from '../config';
 import { useLang } from '../i18n';
+import { subscribeEmail } from '../lib/api';
 
 const whatsappLink = (text?: string) =>
   `https://wa.me/${CONTACT_WHATSAPP.replace(/\D/g, '')}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
@@ -303,5 +304,80 @@ export const WhatsAppButton: React.FC = () => {
       <MessageCircle className="w-6 h-6 sm:w-5 sm:h-5" />
       <span className="hidden sm:inline text-sm font-semibold">{tr('¿Te ayudamos?', 'Need help?')}</span>
     </a>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* Suscripción a ofertas por correo                                    */
+/* ------------------------------------------------------------------ */
+export const Newsletter: React.FC = () => {
+  const { tr, lang } = useLang();
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
+  const [error, setError] = useState('');
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setStatus('error');
+      setError(tr('Escribe un correo válido.', 'Please enter a valid email.'));
+      return;
+    }
+    setStatus('sending');
+    try {
+      await subscribeEmail(email, lang);
+      setStatus('done');
+      setEmail('');
+    } catch (err: any) {
+      setStatus('error');
+      setError(err?.message || tr('No se pudo guardar. Inténtalo de nuevo.', 'Something went wrong. Please try again.'));
+    }
+  };
+
+  return (
+    <section className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-400 to-amber-500 p-6 sm:p-10 grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-blue-950 tracking-tight">
+            {tr('Entérate primero de las ofertas', 'Be the first to hear about deals')}
+          </h2>
+          <p className="text-sm text-blue-950/80 mt-2 leading-relaxed">
+            {tr('Te avisamos de productos nuevos y ofertas de la semana. Sin spam: puedes darte de baja cuando quieras.',
+                'Get new arrivals and weekly deals in your inbox. No spam, unsubscribe anytime.')}
+          </p>
+        </div>
+        {status === 'done' ? (
+          <div className="bg-white/90 rounded-2xl p-5 flex items-center gap-3 text-blue-950">
+            <ShieldCheck className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+            <p className="text-sm font-semibold">{tr('¡Listo! Ya estás en la lista.', "You're in! Thanks for subscribing.")}</p>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="space-y-2">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <label htmlFor="newsletter-email" className="sr-only">{tr('Correo electrónico', 'Email')}</label>
+              <input
+                id="newsletter-email"
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); if (status === 'error') setStatus('idle'); }}
+                placeholder={tr('tucorreo@ejemplo.com', 'you@example.com')}
+                className="flex-1 px-4 py-3.5 rounded-xl bg-white text-sm text-slate-900 border border-white focus:outline-none focus:ring-2 focus:ring-blue-950"
+              />
+              <button
+                type="submit"
+                disabled={status === 'sending'}
+                className="bg-blue-950 hover:bg-blue-900 text-white font-semibold text-sm px-6 py-3.5 rounded-xl disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                <Mail className="w-4 h-4" />
+                {status === 'sending' ? tr('Enviando...', 'Sending...') : tr('Suscribirme', 'Subscribe')}
+              </button>
+            </div>
+            {status === 'error' && <p className="text-xs font-semibold text-red-800">{error}</p>}
+          </form>
+        )}
+      </div>
+    </section>
   );
 };

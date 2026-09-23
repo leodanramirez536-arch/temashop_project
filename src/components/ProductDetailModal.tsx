@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   X, 
   Star, 
@@ -11,7 +11,9 @@ import {
   Plus, 
   Minus,
   Heart,
-  Banknote
+  Banknote,
+  Share2,
+  Link2
 } from 'lucide-react';
 import { Product } from '../types';
 import { RETURN_DAYS } from '../config';
@@ -24,6 +26,8 @@ interface ProductDetailModalProps {
   onBuyNow: (product: Product, quantity: number) => void;
   isWishlisted?: boolean;
   onToggleWishlist?: (product: Product) => void;
+  related?: Product[];
+  onOpenProduct?: (product: Product) => void;
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
@@ -33,14 +37,45 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onBuyNow,
   isWishlisted = false,
   onToggleWishlist,
+  related = [],
+  onOpenProduct,
 }) => {
   const { tr, cat, delivery } = useLang();
   const pt = useProductText();
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  // Cerrar con la tecla Escape
+  useEffect(() => {
+    if (!product) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [product, onClose]);
 
   if (!product) return null;
+
+  const productUrl = `${window.location.origin}/?product=${encodeURIComponent(product.id)}`;
+  const handleShare = async () => {
+    const title = pt.title(product);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text: `${title} - TemaShop`, url: productUrl });
+        return;
+      }
+    } catch {
+      return; // el cliente canceló
+    }
+    try {
+      await navigator.clipboard.writeText(productUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 1800);
+    } catch {
+      /* portapapeles no disponible */
+    }
+  };
 
   const discountPercent = Math.round(
     ((product.originalPrice - product.price) / product.originalPrice) * 100
@@ -59,13 +94,23 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex p-4">
       <div 
         id="product-detail-modal"
-        className="relative bg-white rounded-3xl max-w-3xl w-full overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200"
+        className="m-auto relative bg-white rounded-3xl max-w-3xl w-full overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200"
       >
         {/* Top Header Buttons (Wishlist & Close) */}
         <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+          <button
+            id="detail-modal-share-button"
+            type="button"
+            onClick={handleShare}
+            className="p-2 rounded-full bg-white/90 text-slate-500 hover:text-blue-900 hover:bg-white border border-slate-200 shadow-xs transition-colors"
+            title={tr('Compartir', 'Share')}
+            aria-label={tr('Compartir producto', 'Share product')}
+          >
+            {linkCopied ? <Check className="w-5 h-5 text-emerald-600" /> : <Share2 className="w-5 h-5" />}
+          </button>
           {onToggleWishlist && (
             <button
               id="detail-modal-wishlist-button"
@@ -258,6 +303,36 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           </div>
 
         </div>
+
+        {linkCopied && (
+          <div className="absolute top-16 right-4 z-30 bg-blue-950 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+            <Link2 className="w-3.5 h-3.5" /> {tr('Enlace copiado', 'Link copied')}
+          </div>
+        )}
+
+        {related.length > 0 && onOpenProduct && (
+          <div className="border-t border-slate-200 bg-slate-50/70 p-5 sm:p-6">
+            <h3 className="text-sm font-bold text-slate-900 mb-3">{tr('También te puede gustar', 'You may also like')}</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {related.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => onOpenProduct(r)}
+                  className="text-left bg-white border border-slate-200 hover:border-slate-300 hover:shadow-md rounded-xl overflow-hidden transition-all"
+                >
+                  <div className="aspect-square bg-slate-100">
+                    <img src={r.imageUrl} alt={pt.title(r)} loading="lazy" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="p-2.5">
+                    <p className="text-[11px] font-semibold text-slate-800 line-clamp-2 leading-snug min-h-[2.5em]">{pt.title(r)}</p>
+                    <p className="text-sm font-extrabold text-blue-950 mt-1">${r.price.toFixed(2)}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

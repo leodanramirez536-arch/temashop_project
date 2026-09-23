@@ -197,12 +197,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     step === 'form' ? tr('Finalizar pedido', 'Checkout') : step === 'pay' ? tr('Pagar con tarjeta', 'Pay by card') : tr('¡Pedido recibido!', 'Order received!');
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-blue-950/70 backdrop-blur-xs flex p-3 sm:p-6">
       <div
         id="checkout-modal-container"
         role="dialog"
         aria-modal="true"
-        className="relative bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-slate-200"
+        className="m-auto relative bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-slate-200"
       >
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-2">
