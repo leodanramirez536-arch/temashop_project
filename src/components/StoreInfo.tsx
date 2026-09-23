@@ -13,7 +13,8 @@ import {
   Mail,
   Lock,
 } from 'lucide-react';
-import { CONTACT_EMAIL, CONTACT_WHATSAPP, DELIVERY_ESTIMATE, RETURN_DAYS, formatMoneyShort } from '../config';
+import { CONTACT_EMAIL, CONTACT_WHATSAPP, RETURN_DAYS, formatMoneyShort } from '../config';
+import { useLang } from '../i18n';
 
 const whatsappLink = (text?: string) =>
   `https://wa.me/${CONTACT_WHATSAPP.replace(/\D/g, '')}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
@@ -25,27 +26,28 @@ export const GuaranteeStrip: React.FC<{ freeShippingThreshold: number; onOpenRet
   freeShippingThreshold,
   onOpenReturns,
 }) => {
+  const { tr, delivery } = useLang();
   const items = [
     {
       icon: <Truck className="w-5 h-5" />,
-      title: 'Envío a domicilio',
-      text: `Llega en ${DELIVERY_ESTIMATE}. Gratis desde ${formatMoneyShort(freeShippingThreshold)}.`,
+      title: tr('Envío a domicilio', 'Home delivery'),
+      text: tr(`Llega en ${delivery}. Gratis desde ${formatMoneyShort(freeShippingThreshold)}.`, `Arrives in ${delivery}. Free on orders ${formatMoneyShort(freeShippingThreshold)}+.`),
     },
     {
       icon: <Banknote className="w-5 h-5" />,
-      title: 'Paga al recibir',
-      text: 'Elige efectivo contra entrega y paga solo cuando tengas tu pedido en la mano.',
+      title: tr('Paga al recibir', 'Pay on delivery'),
+      text: tr('Elige efectivo contra entrega y paga solo cuando tengas tu pedido en la mano.', 'Choose cash on delivery and pay only once your order is in your hands.'),
     },
     {
       icon: <RotateCcw className="w-5 h-5" />,
-      title: `Devoluciones en ${RETURN_DAYS} días`,
-      text: '¿No era lo que esperabas? Solicita tu devolución sin complicaciones.',
-      action: { label: 'Ver política', onClick: onOpenReturns },
+      title: tr(`Devoluciones en ${RETURN_DAYS} días`, `${RETURN_DAYS}-day returns`),
+      text: tr('¿No era lo que esperabas? Solicita tu devolución sin complicaciones.', 'Not what you expected? Request a return, hassle-free.'),
+      action: { label: tr('Ver política', 'See policy'), onClick: onOpenReturns },
     },
     {
       icon: <Lock className="w-5 h-5" />,
-      title: 'Pago protegido',
-      text: 'Las tarjetas se procesan con PayPal. Nunca vemos ni guardamos tus datos.',
+      title: tr('Pago protegido', 'Secure payment'),
+      text: tr('Las tarjetas se procesan con PayPal. Nunca vemos ni guardamos tus datos.', 'Cards are processed by PayPal. We never see or store your card details.'),
     },
   ];
 
@@ -79,29 +81,30 @@ export const GuaranteeStrip: React.FC<{ freeShippingThreshold: number; onOpenRet
 /* Cómo comprar en 3 pasos                                             */
 /* ------------------------------------------------------------------ */
 export const HowToBuy: React.FC<{ onShopNow: () => void }> = ({ onShopNow }) => {
+  const { tr } = useLang();
   const steps = [
     {
       icon: <Search className="w-5 h-5" />,
-      title: 'Elige tus productos',
-      text: 'Explora por categoría o busca lo que necesitas y añádelo a tu bolsa.',
+      title: tr('Elige tus productos', 'Pick your products'),
+      text: tr('Explora por categoría o busca lo que necesitas y añádelo a tu bolsa.', 'Browse by category or search for what you need and add it to your cart.'),
     },
     {
       icon: <ShoppingBag className="w-5 h-5" />,
-      title: 'Confirma tu pedido',
-      text: 'Escribe tu dirección y elige cómo pagar. No necesitas crear una cuenta.',
+      title: tr('Confirma tu pedido', 'Place your order'),
+      text: tr('Escribe tu dirección y elige cómo pagar. No necesitas crear una cuenta.', 'Enter your address and choose how to pay. No account needed.'),
     },
     {
       icon: <Truck className="w-5 h-5" />,
-      title: 'Recíbelo en casa',
-      text: 'Preparamos tu pedido y puedes consultar su estado en cualquier momento.',
+      title: tr('Recíbelo en casa', 'Get it at home'),
+      text: tr('Preparamos tu pedido y puedes consultar su estado en cualquier momento.', 'We prepare your order and you can check its status anytime.'),
     },
   ];
 
   return (
     <section className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-8 sm:py-12">
       <div className="text-center max-w-2xl mx-auto mb-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-600">Así de fácil</p>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-blue-950 tracking-tight mt-2">Compra en 3 pasos</h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-600">{tr('Así de fácil', 'It\'s that easy')}</p>
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-blue-950 tracking-tight mt-2">{tr('Compra en 3 pasos', 'Shop in 3 steps')}</h2>
       </div>
       <ol className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {steps.map((s, i) => (
@@ -122,7 +125,7 @@ export const HowToBuy: React.FC<{ onShopNow: () => void }> = ({ onShopNow }) => 
           onClick={onShopNow}
           className="bg-blue-950 hover:bg-blue-900 text-white font-semibold text-sm py-3 px-7 rounded-xl transition-colors"
         >
-          Empezar a comprar
+          {tr('Empezar a comprar', 'Start shopping')}
         </button>
       </div>
     </section>
@@ -133,11 +136,12 @@ export const HowToBuy: React.FC<{ onShopNow: () => void }> = ({ onShopNow }) => 
 /* Métodos de pago                                                     */
 /* ------------------------------------------------------------------ */
 export const PaymentMethods: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
+  const { tr } = useLang();
   const methods = [
-    { name: 'Tarjeta', detail: 'Débito o crédito', icon: <CreditCard className="w-5 h-5" />, color: 'text-blue-700 bg-blue-50' },
-    { name: 'Zelle', detail: 'Transferencia directa', icon: <Smartphone className="w-5 h-5" />, color: 'text-violet-700 bg-violet-50' },
-    { name: 'Cash App', detail: 'Pago desde tu app', icon: <Smartphone className="w-5 h-5" />, color: 'text-emerald-700 bg-emerald-50' },
-    { name: 'Efectivo', detail: 'Pagas al recibir', icon: <Banknote className="w-5 h-5" />, color: 'text-amber-700 bg-amber-50' },
+    { name: tr('Tarjeta', 'Card'), detail: tr('Débito o crédito', 'Debit or credit'), icon: <CreditCard className="w-5 h-5" />, color: 'text-blue-700 bg-blue-50' },
+    { name: 'Zelle', detail: tr('Transferencia directa', 'Bank transfer'), icon: <Smartphone className="w-5 h-5" />, color: 'text-violet-700 bg-violet-50' },
+    { name: 'Cash App', detail: tr('Pago desde tu app', 'Pay from the app'), icon: <Smartphone className="w-5 h-5" />, color: 'text-emerald-700 bg-emerald-50' },
+    { name: tr('Efectivo', 'Cash'), detail: tr('Pagas al recibir', 'Pay on delivery'), icon: <Banknote className="w-5 h-5" />, color: 'text-amber-700 bg-amber-50' },
   ];
 
   if (compact) {
@@ -156,14 +160,13 @@ export const PaymentMethods: React.FC<{ compact?: boolean }> = ({ compact = fals
     <section className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-8 sm:py-12">
       <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-8 items-center">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-600">Formas de pago</p>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-blue-950 tracking-tight mt-2">Paga como te quede mejor</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-600">{tr('Formas de pago', 'Payment options')}</p>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-blue-950 tracking-tight mt-2">{tr('Paga como te quede mejor', 'Pay the way you prefer')}</h2>
           <p className="text-sm text-slate-500 mt-3 leading-relaxed">
-            Los pagos con tarjeta se procesan de forma segura a través de PayPal: no necesitas cuenta de PayPal y
-            nosotros nunca vemos los datos de tu tarjeta. Si prefieres, paga en efectivo cuando recibas tu pedido.
+            {tr('Los pagos con tarjeta se procesan de forma segura a través de PayPal: no necesitas cuenta de PayPal y nosotros nunca vemos los datos de tu tarjeta. Si prefieres, paga en efectivo cuando recibas tu pedido.', 'Card payments are processed securely by PayPal. You don\'t need a PayPal account, and we never see your card details. Prefer cash? Pay when your order arrives.')}
           </p>
           <p className="flex items-center gap-2 text-xs text-emerald-700 font-semibold mt-4">
-            <ShieldCheck className="w-4 h-4" /> Conexión cifrada en todo el proceso de compra
+            <ShieldCheck className="w-4 h-4" /> {tr('Conexión cifrada en todo el proceso de compra', 'Encrypted connection throughout checkout')}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -189,47 +192,48 @@ export const FAQ: React.FC<{ freeShippingThreshold: number; onOpenOrders: () => 
   freeShippingThreshold,
   onOpenOrders,
 }) => {
+  const { tr, delivery } = useLang();
   const [open, setOpen] = useState<number | null>(0);
 
   const items: { q: string; a: React.ReactNode }[] = [
     {
-      q: '¿Cuánto tarda en llegar mi pedido?',
-      a: `La entrega estimada es de ${DELIVERY_ESTIMATE} desde que confirmamos tu pedido. El envío es gratis en compras desde ${formatMoneyShort(freeShippingThreshold)}.`,
+      q: tr('¿Cuánto tarda en llegar mi pedido?', 'How long does delivery take?'),
+      a: tr(`La entrega estimada es de ${delivery} desde que confirmamos tu pedido. El envío es gratis en compras desde ${formatMoneyShort(freeShippingThreshold)}.`, `Estimated delivery is ${delivery} after we confirm your order. Shipping is free on orders ${formatMoneyShort(freeShippingThreshold)}+.`),
     },
     {
-      q: '¿Es seguro pagar con tarjeta?',
-      a: 'Sí. Los pagos con tarjeta los procesa PayPal, una de las plataformas de pago más usadas del mundo. Tu tarjeta nunca pasa por nuestra tienda y no guardamos sus datos. No necesitas tener cuenta de PayPal.',
+      q: tr('¿Es seguro pagar con tarjeta?', 'Is it safe to pay by card?'),
+      a: tr('Sí. Los pagos con tarjeta los procesa PayPal, una de las plataformas de pago más usadas del mundo. Tu tarjeta nunca pasa por nuestra tienda y no guardamos sus datos. No necesitas tener cuenta de PayPal.', 'Yes. Card payments are processed by PayPal, one of the most widely used payment platforms in the world. Your card never passes through our store and we don\'t store its details. You don\'t need a PayPal account.'),
     },
     {
-      q: '¿Puedo pagar cuando reciba el producto?',
-      a: 'Sí. Al finalizar tu compra elige "Efectivo contra entrega" y pagas en el momento en que recibes tu pedido.',
+      q: tr('¿Puedo pagar cuando reciba el producto?', 'Can I pay when my order arrives?'),
+      a: tr('Sí. Al finalizar tu compra elige "Efectivo contra entrega" y pagas en el momento en que recibes tu pedido.', 'Yes. At checkout choose "Cash" and pay when you receive your order.'),
     },
     {
-      q: '¿Y si el producto no me convence?',
-      a: `Tienes ${RETURN_DAYS} días desde que recibes tu pedido para solicitar una devolución. Revisa la política de envíos y devoluciones al final de la página.`,
+      q: tr('¿Y si el producto no me convence?', 'What if I\'m not happy with it?'),
+      a: tr(`Tienes ${RETURN_DAYS} días desde que recibes tu pedido para solicitar una devolución. Revisa la política de envíos y devoluciones al final de la página.`, `You have ${RETURN_DAYS} days from delivery to request a return. See our Shipping & Returns policy at the bottom of the page.`),
     },
     {
-      q: '¿Cómo sé en qué estado va mi pedido?',
+      q: tr('¿Cómo sé en qué estado va mi pedido?', 'How do I track my order?'),
       a: (
         <>
-          Con tu número de pedido y tu correo puedes consultarlo en cualquier momento, sin necesidad de cuenta.{' '}
+          {tr('Con tu número de pedido y tu correo puedes consultarlo en cualquier momento, sin necesidad de cuenta.', 'Use your order number and email to check it anytime, no account needed.')}{' '}
           <button onClick={onOpenOrders} className="text-blue-900 font-semibold underline underline-offset-2">
-            Consultar mi pedido
+            {tr('Consultar mi pedido', 'Track my order')}
           </button>
         </>
       ),
     },
     {
-      q: '¿Necesito crear una cuenta para comprar?',
-      a: 'No. Puedes comprar como invitado. Si creas una cuenta, verás todos tus pedidos en un solo lugar.',
+      q: tr('¿Necesito crear una cuenta para comprar?', 'Do I need an account to buy?'),
+      a: tr('No. Puedes comprar como invitado. Si creas una cuenta, verás todos tus pedidos en un solo lugar.', 'No. You can check out as a guest. With an account, you see all your orders in one place.'),
     },
   ];
 
   return (
     <section id="faq" className="max-w-3xl mx-auto px-3 sm:px-6 lg:px-8 py-8 sm:py-12">
       <div className="text-center mb-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-600">Resolvemos tus dudas</p>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-blue-950 tracking-tight mt-2">Preguntas frecuentes</h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-600">{tr('Resolvemos tus dudas', 'We\'re here to help')}</p>
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-blue-950 tracking-tight mt-2">{tr('Preguntas frecuentes', 'Frequently asked questions')}</h2>
       </div>
       <div className="space-y-2.5">
         {items.map((it, i) => {
@@ -253,13 +257,13 @@ export const FAQ: React.FC<{ freeShippingThreshold: number; onOpenOrders: () => 
       {(CONTACT_WHATSAPP || CONTACT_EMAIL) && (
         <div className="mt-8 bg-blue-950 text-white rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div>
-            <p className="font-bold">¿Tienes otra pregunta?</p>
-            <p className="text-sm text-blue-200 mt-0.5">Te respondemos personalmente antes de que compres.</p>
+            <p className="font-bold">{tr('¿Tienes otra pregunta?', 'Have another question?')}</p>
+            <p className="text-sm text-blue-200 mt-0.5">{tr('Te respondemos personalmente antes de que compres.', 'A real person will answer before you buy.')}</p>
           </div>
           <div className="flex gap-2">
             {CONTACT_WHATSAPP && (
               <a
-                href={whatsappLink('Hola, tengo una pregunta sobre un producto de TemaShop.')}
+                href={whatsappLink(tr('Hola, tengo una pregunta sobre un producto de TemaShop.', 'Hi, I have a question about a TemaShop product.'))}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold text-sm py-2.5 px-5 rounded-xl"
@@ -272,7 +276,7 @@ export const FAQ: React.FC<{ freeShippingThreshold: number; onOpenOrders: () => 
                 href={`mailto:${CONTACT_EMAIL}`}
                 className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm py-2.5 px-5 rounded-xl"
               >
-                <Mail className="w-4 h-4" /> Correo
+                <Mail className="w-4 h-4" /> {tr('Correo', 'Email')}
               </a>
             )}
           </div>
@@ -286,17 +290,18 @@ export const FAQ: React.FC<{ freeShippingThreshold: number; onOpenOrders: () => 
 /* Botón flotante de WhatsApp                                          */
 /* ------------------------------------------------------------------ */
 export const WhatsAppButton: React.FC = () => {
+  const { tr } = useLang();
   if (!CONTACT_WHATSAPP) return null;
   return (
     <a
-      href={whatsappLink('Hola, quiero hacer un pedido en TemaShop.')}
+      href={whatsappLink(tr('Hola, quiero hacer un pedido en TemaShop.', 'Hi, I would like to place an order at TemaShop.'))}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="Escríbenos por WhatsApp"
+      aria-label={tr('Escríbenos por WhatsApp', 'Message us on WhatsApp')}
       className="fixed z-40 right-4 bottom-20 sm:bottom-6 sm:right-6 flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-full shadow-xl shadow-emerald-900/20 p-3.5 sm:pl-4 sm:pr-5 transition-colors"
     >
       <MessageCircle className="w-6 h-6 sm:w-5 sm:h-5" />
-      <span className="hidden sm:inline text-sm font-semibold">¿Te ayudamos?</span>
+      <span className="hidden sm:inline text-sm font-semibold">{tr('¿Te ayudamos?', 'Need help?')}</span>
     </a>
   );
 };

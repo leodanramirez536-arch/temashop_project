@@ -104,6 +104,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Form states for creating product
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [titleEn, setTitleEn] = useState('');
+  const [descriptionEn, setDescriptionEn] = useState('');
   const [category, setCategory] = useState('Tecnología');
   const [price, setPrice] = useState('');
   const [originalPrice, setOriginalPrice] = useState('');
@@ -158,6 +160,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       const newProduct = await createProduct({
         title: title.trim(),
         description: description.trim(),
+        titleEn: titleEn.trim(),
+        descriptionEn: descriptionEn.trim(),
         category,
         price: salePrice,
         originalPrice: Math.max(salePrice, prevPrice),
@@ -169,6 +173,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       onProductsUpdated([newProduct, ...products]);
       setTitle('');
       setDescription('');
+      setTitleEn('');
+      setDescriptionEn('');
       setPrice('');
       setOriginalPrice('');
       setStock('20');
@@ -677,6 +683,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     />
                   </div>
 
+                  {/* Nombre en inglés */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Nombre en inglés <span className="font-normal text-slate-400">(lo ven los clientes con la tienda en inglés)</span>
+                    </label>
+                    <input
+                      id="new-product-title-en"
+                      type="text"
+                      placeholder="Ex. 55-inch 4K Ultra HD Smart TV with Voice Assistant"
+                      value={titleEn}
+                      onChange={(e) => setTitleEn(e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-900 focus:outline-none"
+                    />
+                  </div>
+
                   {/* Pricing with Automatic Discount Calculator */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50/70 p-3.5 rounded-2xl border border-slate-200">
                     <div>
@@ -811,6 +832,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       placeholder="Describe los beneficios, especificaciones técnicas, materiales y contenido de la caja..."
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
+                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-900 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Descripción en inglés */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Descripción en inglés
+                    </label>
+                    <textarea
+                      id="new-product-desc-en"
+                      rows={3}
+                      placeholder="Describe the benefits, specs, materials and what's in the box..."
+                      value={descriptionEn}
+                      onChange={(e) => setDescriptionEn(e.target.value)}
                       className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-900 focus:outline-none"
                     />
                   </div>
@@ -968,6 +1004,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   />
                 </div>
 
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Nombre en inglés</label>
+                  <input
+                    type="text"
+                    value={editingProduct.titleEn || ''}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, titleEn: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-1 focus:ring-blue-900"
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Categoría</label>
@@ -1044,6 +1090,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     rows={2}
                     value={editingProduct.description}
                     onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Descripción en inglés</label>
+                  <textarea
+                    rows={2}
+                    value={editingProduct.descriptionEn || ''}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, descriptionEn: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>

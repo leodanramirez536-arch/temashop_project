@@ -25,6 +25,7 @@ import {
   MessageCircle
 } from 'lucide-react';
 import { CONTACT_WHATSAPP, RETURN_DAYS, formatMoneyShort } from '../config';
+import { useLang, LanguageToggle } from '../i18n';
 import { User, CartItem } from '../types';
 
 interface NavbarProps {
@@ -58,6 +59,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectCategory,
   freeShippingThreshold,
 }) => {
+  const { tr, cat } = useLang();
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -79,31 +81,32 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="sticky top-0 z-40 bg-white shadow-xs border-b border-slate-200">
       {/* Barra superior: beneficios reales de la tienda */}
       <div className="bg-blue-950 text-blue-100 text-[11px] sm:text-xs py-2 px-3 sm:px-4 font-medium">
-        <div className="max-w-7xl mx-auto flex items-center justify-center md:justify-between gap-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Truck className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
             <span>
-              <strong className="text-white font-semibold">Envío gratis</strong> en pedidos desde {formatMoneyShort(freeShippingThreshold)}
-              <span className="hidden sm:inline"> · Paga con tarjeta, Zelle, Cash App o efectivo al recibir</span>
+              <strong className="text-white font-semibold">{tr('Envío gratis', 'Free shipping')}</strong> {tr(`en pedidos desde ${formatMoneyShort(freeShippingThreshold)}`, `on orders ${formatMoneyShort(freeShippingThreshold)}+`)}
+              <span className="hidden sm:inline"> · {tr('Paga con tarjeta, Zelle, Cash App o efectivo al recibir', 'Pay by card, Zelle, Cash App or cash on delivery')}</span>
             </span>
           </div>
-          <div className="hidden md:flex items-center gap-5 text-blue-200">
-            <span className="flex items-center gap-1.5">
-              <RotateCcw className="w-3.5 h-3.5 text-amber-400" /> Devoluciones en {RETURN_DAYS} días
+          <div className="flex items-center gap-5 text-blue-200">
+            <span className="hidden md:flex items-center gap-1.5">
+              <RotateCcw className="w-3.5 h-3.5 text-amber-400" /> {tr(`Devoluciones en ${RETURN_DAYS} días`, `${RETURN_DAYS}-day returns`)}
             </span>
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" /> Compra protegida
+            <span className="hidden lg:flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" /> {tr('Compra protegida', 'Secure checkout')}
             </span>
             {CONTACT_WHATSAPP && (
               <a
                 href={`https://wa.me/${CONTACT_WHATSAPP.replace(/\D/g, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-white hover:text-amber-300 font-semibold"
+                className="hidden md:flex items-center gap-1.5 text-white hover:text-amber-300 font-semibold"
               >
-                <MessageCircle className="w-3.5 h-3.5 text-emerald-400" /> ¿Dudas? Escríbenos
+                <MessageCircle className="w-3.5 h-3.5 text-emerald-400" /> {tr('¿Dudas? Escríbenos', 'Questions? Message us')}
               </a>
             )}
+            <LanguageToggle dark />
           </div>
         </div>
       </div>
@@ -117,7 +120,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             id="mobile-hamburger-btn"
             onClick={() => setMobileMenuOpen(true)}
             className="p-2 -ml-1 text-blue-950 hover:text-amber-600 lg:hidden rounded-xl hover:bg-slate-100 transition-colors"
-            aria-label="Abrir menú de navegación móvil"
+            aria-label={tr('Abrir menú', 'Open menu')}
           >
             <Menu className="w-6 h-6" />
           </button>
@@ -138,7 +141,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               </div>
               <p className="text-[10px] text-slate-500 font-medium hidden sm:block -mt-0.5 tracking-wide">
-                Compra fácil · Recibe en casa
+                {tr('Compra fácil · Recibe en casa', 'Shop easy · Delivered to your door')}
               </p>
             </div>
           </div>
@@ -153,7 +156,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <input
                   id="search-input"
                   type="text"
-                  placeholder="Buscar productos"
+                  placeholder={tr('Buscar productos', 'Search products')}
                   value={searchQuery}
                   onChange={(e) => onSearchChange(e.target.value)}
                   className="w-full py-1.5 sm:py-2.5 px-2.5 sm:px-3 text-xs sm:text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent"
@@ -163,7 +166,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     id="clear-search-button"
                     onClick={() => onSearchChange('')}
                     className="p-1 mr-1.5 text-gray-400 hover:text-gray-600 rounded-full"
-                    title="Limpiar búsqueda"
+                    title={tr('Limpiar búsqueda', 'Clear search')}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -172,7 +175,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   id="search-submit-button"
                   className="bg-blue-900 hover:bg-blue-800 text-amber-400 px-4 sm:px-6 py-2.5 font-black text-xs sm:text-sm transition-colors items-center gap-1 hidden md:flex border-l border-blue-800"
                 >
-                  Buscar
+                  {tr('Buscar', 'Search')}
                 </button>
               </div>
             </div>
@@ -216,7 +219,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <span className="bg-amber-500 text-blue-950 text-[9px] px-1 rounded font-black">ADMIN</span>
                         )}
                       </div>
-                      <span className="text-[10px] text-gray-400">Mi Cuenta</span>
+                      <span className="text-[10px] text-gray-400">{tr('Mi cuenta', 'My account')}</span>
                     </div>
                   </button>
 
@@ -234,7 +237,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                             currentUser.role === 'admin' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-blue-100 text-blue-900'
                           }`}>
-                            {currentUser.role === 'admin' ? 'Administrador' : 'Cliente'}
+                            {currentUser.role === 'admin' ? tr('Administrador', 'Admin') : tr('Cliente', 'Customer')}
                           </span>
                         </div>
 
@@ -261,7 +264,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           className="w-full text-left px-4 py-2.5 text-xs text-gray-700 hover:bg-slate-50 flex items-center gap-2 font-medium"
                         >
                           <Package className="w-4 h-4 text-blue-900" />
-                          Mis Pedidos y Envíos
+                          {tr('Mis pedidos', 'My orders')}
                         </button>
 
                         <button
@@ -274,7 +277,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         >
                           <div className="flex items-center gap-2">
                             <Heart className={`w-4 h-4 ${wishlistCount > 0 ? 'text-rose-500 fill-rose-500' : 'text-slate-400'}`} />
-                            <span>Mi Lista de Deseos</span>
+                            <span>{tr('Mis favoritos', 'My favorites')}</span>
                           </div>
                           {wishlistCount > 0 && (
                             <span className="bg-rose-100 text-rose-700 font-bold text-[10px] px-2 py-0.5 rounded-full">
@@ -294,7 +297,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           className="w-full text-left px-4 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2"
                         >
                           <LogOut className="w-4 h-4 text-red-500" />
-                          Cerrar Sesión
+                          {tr('Cerrar sesión', 'Sign out')}
                         </button>
                       </div>
                     </>
@@ -307,7 +310,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className="hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-blue-950 hover:text-amber-600 hover:bg-blue-50 font-bold text-xs transition-colors border border-blue-900/30"
                 >
                   <UserIcon className="w-4 h-4 text-blue-900" />
-                  <span className="hidden sm:inline">Ingresar</span>
+                  <span className="hidden sm:inline">{tr('Ingresar', 'Sign in')}</span>
                 </button>
               )}
             </div>
@@ -317,8 +320,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="wishlist-trigger-button"
               onClick={onOpenWishlist}
               className="relative hidden sm:flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl text-blue-950 hover:text-rose-600 hover:bg-rose-50/80 transition-all border border-slate-200 hover:border-rose-200 active:scale-95 bg-white shadow-2xs"
-              title="Mi Lista de Deseos (Favoritos)"
-              aria-label="Abrir lista de deseos"
+              title={tr('Mis favoritos', 'My favorites')}
+              aria-label={tr('Abrir favoritos', 'Open favorites')}
             >
               <div className="relative">
                 <Heart className={`w-5 h-5 transition-transform ${wishlistCount > 0 ? 'text-rose-500 fill-rose-500 scale-105' : 'text-slate-600'}`} />
@@ -332,7 +335,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
               <span className="hidden xl:inline text-xs font-bold text-slate-700">
-                Favoritos
+                {tr('Favoritos', 'Favorites')}
               </span>
             </button>
 
@@ -354,7 +357,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
               <span className="hidden lg:inline text-xs font-semibold">
-                {totalCartItems > 0 ? `$${cartSubtotal.toFixed(2)}` : 'Bolsa'}
+                {totalCartItems > 0 ? `$${cartSubtotal.toFixed(2)}` : tr('Bolsa', 'Cart')}
               </span>
             </button>
 
@@ -420,7 +423,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                   ) : (
                     <span className="inline-block text-[10px] font-bold text-blue-900 bg-blue-100 px-2 py-0.5 rounded-full">
-                      🛍️ Cuenta Cliente
+                      {tr('Cuenta de cliente', 'Customer account')}
                     </span>
                   )}
                 </div>
@@ -432,7 +435,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }}
                   className="w-full bg-blue-900 hover:bg-blue-800 text-amber-400 font-bold text-xs py-2.5 rounded-xl shadow-xs"
                 >
-                  Iniciar Sesión / Registrarse
+                  {tr('Iniciar sesión / Registrarse', 'Sign in / Create account')}
                 </button>
               )}
             </div>
@@ -460,21 +463,21 @@ export const Navbar: React.FC<NavbarProps> = ({
               {/* Categories list */}
               <div>
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">
-                  Departamentos de Mercancía
+                  {tr('Categorías', 'Categories')}
                 </span>
                 <div className="space-y-1">
-                  {categories.map((cat) => (
+                  {categories.map((c) => (
                     <button
-                      key={cat.name}
+                      key={c.name}
                       onClick={() => {
-                        onSelectCategory(cat.name);
+                        onSelectCategory(c.name);
                         setMobileMenuOpen(false);
                       }}
                       className="w-full p-2.5 rounded-xl hover:bg-blue-50 hover:text-blue-900 font-semibold text-gray-700 flex items-center justify-between transition-colors"
                     >
                       <div className="flex items-center gap-2.5">
-                        {cat.icon}
-                        <span>{cat.name}</span>
+                        {c.icon}
+                        <span>{cat(c.name)}</span>
                       </div>
                       <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
                     </button>
@@ -495,7 +498,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className="w-full p-2.5 rounded-xl hover:bg-slate-100 font-semibold text-gray-700 flex items-center gap-2.5"
                 >
                   <Package className="w-4 h-4 text-blue-900" />
-                  <span>Mis Pedidos y Envíos</span>
+                  <span>{tr('Mis pedidos', 'My orders')}</span>
                 </button>
                 <button
                   onClick={() => {
@@ -506,7 +509,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <div className="flex items-center gap-2.5">
                     <Heart className={`w-4 h-4 ${wishlistCount > 0 ? 'text-rose-500 fill-rose-500' : 'text-slate-600'}`} />
-                    <span>Mi Lista de Deseos</span>
+                    <span>{tr('Mis favoritos', 'My favorites')}</span>
                   </div>
                   {wishlistCount > 0 && (
                     <span className="bg-rose-100 text-rose-700 font-bold text-[10px] px-2 py-0.5 rounded-full">
@@ -523,7 +526,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <div className="flex items-center gap-2.5">
                     <ShoppingBag className="w-4 h-4 text-blue-900" />
-                    <span>Mi Bolsa</span>
+                    <span>{tr('Mi bolsa', 'My cart')}</span>
                   </div>
                   {totalCartItems > 0 && (
                     <span className="bg-amber-500 text-blue-950 font-black text-[10px] px-2 py-0.5 rounded-full">
@@ -546,7 +549,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className="w-full py-2.5 text-red-600 hover:bg-red-50 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Cerrar Sesión</span>
+                  <span>{tr('Cerrar sesión', 'Sign out')}</span>
                 </button>
               </div>
             )}

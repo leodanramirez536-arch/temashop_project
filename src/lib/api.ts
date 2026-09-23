@@ -1,15 +1,16 @@
 import { supabase, ADMIN_EMAIL } from './supabase';
+import { trNow } from '../i18n';
 import { Product, Order, User, StoreSettings, PaymentMethod, OrderStatus, PaymentStatus } from '../types';
 
 // ---------------- Helpers ----------------
 const friendlyError = (err: any): string => {
-  const msg: string = err?.message || String(err || 'Error desconocido');
-  if (/Invalid login credentials/i.test(msg)) return 'Correo o contraseña incorrectos.';
-  if (/Email not confirmed/i.test(msg)) return 'Debes confirmar tu correo. Revisa tu bandeja de entrada (y la carpeta de spam).';
-  if (/User already registered/i.test(msg)) return 'Este correo ya tiene una cuenta. Inicia sesión.';
-  if (/Password should be at least/i.test(msg)) return 'La contraseña debe tener al menos 6 caracteres.';
-  if (/rate limit/i.test(msg)) return 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.';
-  if (/Failed to fetch|NetworkError/i.test(msg)) return 'Sin conexión. Revisa tu internet e inténtalo de nuevo.';
+  const msg: string = err?.message || String(err || trNow('Error desconocido', 'Unknown error'));
+  if (/Invalid login credentials/i.test(msg)) return trNow('Correo o contraseña incorrectos.', 'Incorrect email or password.');
+  if (/Email not confirmed/i.test(msg)) return trNow('Debes confirmar tu correo. Revisa tu bandeja de entrada (y la carpeta de spam).', 'Please confirm your email first. Check your inbox (and spam folder).');
+  if (/User already registered/i.test(msg)) return trNow('Este correo ya tiene una cuenta. Inicia sesión.', 'This email already has an account. Please sign in.');
+  if (/Password should be at least/i.test(msg)) return trNow('La contraseña debe tener al menos 6 caracteres.', 'Password must be at least 6 characters.');
+  if (/rate limit/i.test(msg)) return trNow('Demasiados intentos. Espera unos minutos e inténtalo de nuevo.', 'Too many attempts. Please wait a few minutes and try again.');
+  if (/Failed to fetch|NetworkError/i.test(msg)) return trNow('Sin conexión. Revisa tu internet e inténtalo de nuevo.', 'No connection. Check your internet and try again.');
   return msg;
 };
 
@@ -22,7 +23,9 @@ const fail = (err: any): never => {
 const mapProduct = (r: any): Product => ({
   id: r.id,
   title: r.title,
+  titleEn: r.title_en || undefined,
   description: r.description || '',
+  descriptionEn: r.description_en || undefined,
   category: r.category,
   price: Number(r.price),
   originalPrice: Number(r.original_price),
@@ -40,6 +43,8 @@ const productToRow = (p: Partial<Product>) => {
   const row: Record<string, any> = {};
   if (p.title !== undefined) row.title = p.title.trim();
   if (p.description !== undefined) row.description = p.description.trim();
+  if (p.titleEn !== undefined) row.title_en = p.titleEn.trim() || null;
+  if (p.descriptionEn !== undefined) row.description_en = p.descriptionEn.trim() || null;
   if (p.category !== undefined) row.category = p.category;
   if (p.price !== undefined) row.price = p.price;
   if (p.originalPrice !== undefined) row.original_price = Math.max(p.originalPrice, p.price ?? 0);
@@ -155,7 +160,7 @@ export async function signUp(name: string, email: string, password: string): Pro
   });
   if (error) fail(error);
   if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-    throw new ApiError('Este correo ya tiene una cuenta. Inicia sesión o recupera tu contraseña.');
+    throw new ApiError(trNow('Este correo ya tiene una cuenta. Inicia sesión o recupera tu contraseña.', 'This email already has an account. Sign in or reset your password.'));
   }
   return data.session?.user ? toUser(data.session.user) : null;
 }
@@ -274,7 +279,7 @@ export async function paypalCreateOrder(orderId: string): Promise<string> {
     body: JSON.stringify({ orderId }),
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok || !json.id) throw new ApiError(json.error || 'No se pudo iniciar el pago con PayPal.');
+  if (!res.ok || !json.id) throw new ApiError(json.error || trNow('No se pudo iniciar el pago con PayPal.', 'Could not start the PayPal payment.'));
   return json.id;
 }
 
@@ -285,7 +290,7 @@ export async function paypalCaptureOrder(orderId: string, paypalOrderId: string)
     body: JSON.stringify({ orderId, paypalOrderId }),
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok || !json.ok) throw new ApiError(json.error || 'No se pudo confirmar el pago con PayPal.');
+  if (!res.ok || !json.ok) throw new ApiError(json.error || trNow('No se pudo confirmar el pago con PayPal.', 'Could not confirm the PayPal payment.'));
 }
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
@@ -308,3 +313,32 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   zelle: 'Zelle',
   cashapp: 'Cash App',
 };
+
+// Versiones en inglés (para la tienda pública)
+export const ORDER_STATUS_LABELS_EN: Record<OrderStatus, string> = {
+  pendiente: 'Pending',
+  confirmado: 'Confirmed',
+  enviado: 'Shipped',
+  entregado: 'Delivered',
+  cancelado: 'Canceled',
+};
+
+export const PAYMENT_STATUS_LABELS_EN: Record<PaymentStatus, string> = {
+  pendiente: 'Payment pending',
+  pagado: 'Paid',
+  reembolsado: 'Refunded',
+};
+
+export const PAYMENT_METHOD_LABELS_EN: Record<string, string> = {
+  paypal: 'Card / PayPal',
+  cash_on_delivery: 'Cash on delivery',
+  zelle: 'Zelle',
+  cashapp: 'Cash App',
+};
+
+export const orderStatusLabel = (s: OrderStatus, lang: 'en' | 'es') =>
+  (lang === 'en' ? ORDER_STATUS_LABELS_EN : ORDER_STATUS_LABELS)[s] || s;
+export const paymentStatusLabel = (s: PaymentStatus, lang: 'en' | 'es') =>
+  (lang === 'en' ? PAYMENT_STATUS_LABELS_EN : PAYMENT_STATUS_LABELS)[s] || s;
+export const paymentMethodLabel = (m: string, lang: 'en' | 'es') =>
+  (lang === 'en' ? PAYMENT_METHOD_LABELS_EN : PAYMENT_METHOD_LABELS)[m] || m;

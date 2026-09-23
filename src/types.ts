@@ -1,7 +1,9 @@
 export interface Product {
   id: string;
   title: string;
+  titleEn?: string;       // nombre en inglés (opcional)
   description: string;
+  descriptionEn?: string; // descripción en inglés (opcional)
   price: number;
   originalPrice: number;
   category: string;

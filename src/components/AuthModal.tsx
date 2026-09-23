@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, User as UserIcon, Lock, Mail, ShieldCheck, Check, AlertCircle } from 'lucide-react';
 import { User } from '../types';
 import { signIn, signUp, sendPasswordReset, updatePassword } from '../lib/api';
+import { useLang } from '../i18n';
 
 type Mode = 'login' | 'register' | 'forgot' | 'update-password';
 
@@ -55,6 +56,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onNotice,
   initialMode = 'login',
 }) => {
+  const { tr } = useLang();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -81,7 +83,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     try {
       await fn();
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Ocurrió un error. Inténtalo de nuevo.');
+      setErrorMessage(err?.message || tr('Ocurrió un error. Inténtalo de nuevo.', 'Something went wrong. Please try again.'));
     } finally {
       setBusy(false);
     }
@@ -100,7 +102,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 8) {
-      setErrorMessage('La contraseña debe tener al menos 8 caracteres.');
+      setErrorMessage(tr('La contraseña debe tener al menos 8 caracteres.', 'Password must be at least 8 characters.'));
       return;
     }
     run(async () => {
@@ -111,7 +113,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onClose();
       } else {
         setSuccessMessage(
-          `Te enviamos un correo a ${email.trim()}. Abre el enlace para confirmar tu cuenta y luego inicia sesión.`
+          tr(`Te enviamos un correo a ${email.trim()}. Abre el enlace para confirmar tu cuenta y luego inicia sesión.`, `We sent an email to ${email.trim()}. Open the link to confirm your account, then sign in.`)
         );
         setMode('login');
       }
@@ -122,34 +124,34 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     e.preventDefault();
     run(async () => {
       await sendPasswordReset(email);
-      setSuccessMessage(`Si existe una cuenta con ${email.trim()}, recibirás un enlace para crear una nueva contraseña.`);
+      setSuccessMessage(tr(`Si existe una cuenta con ${email.trim()}, recibirás un enlace para crear una nueva contraseña.`, `If an account exists for ${email.trim()}, you'll get a link to set a new password.`));
     });
   };
 
   const handleUpdatePassword = (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 8) {
-      setErrorMessage('La contraseña debe tener al menos 8 caracteres.');
+      setErrorMessage(tr('La contraseña debe tener al menos 8 caracteres.', 'Password must be at least 8 characters.'));
       return;
     }
     if (password !== password2) {
-      setErrorMessage('Las contraseñas no coinciden.');
+      setErrorMessage(tr('Las contraseñas no coinciden.', 'Passwords don\'t match.'));
       return;
     }
     run(async () => {
       await updatePassword(password);
       setPassword('');
       setPassword2('');
-      onNotice?.('Contraseña actualizada');
+      onNotice?.(tr('Contraseña actualizada', 'Password updated'));
       onClose();
     });
   };
 
   const titles: Record<Mode, string> = {
-    login: 'Iniciar Sesión',
-    register: 'Crear Cuenta',
-    forgot: 'Recuperar Contraseña',
-    'update-password': 'Nueva Contraseña',
+    login: tr('Iniciar sesión', 'Sign in'),
+    register: tr('Crear cuenta', 'Create account'),
+    forgot: tr('Recuperar contraseña', 'Reset password'),
+    'update-password': tr('Nueva contraseña', 'New password'),
   };
 
   const submitButton = (label: string, variant: 'blue' | 'amber' = 'blue') => (
@@ -179,7 +181,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <button
             id="close-auth-modal-button"
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={tr('Cerrar', 'Close')}
             className="absolute top-4 right-4 p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors"
           >
             <X className="w-5 h-5" />
@@ -207,7 +209,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     mode === m ? 'bg-amber-400 text-blue-950 font-black shadow-sm' : 'text-white/80 hover:text-white'
                   }`}
                 >
-                  {m === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
+                  {m === 'login' ? tr('Iniciar sesión', 'Sign in') : tr('Crear cuenta', 'Create account')}
                 </button>
               ))}
             </div>
@@ -230,58 +232,58 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {mode === 'login' && (
             <form onSubmit={handleLogin} className="space-y-3.5">
-              <Field id="login-input-email" label="Correo electrónico" icon={<Mail className="w-4 h-4" />} type="email"
-                value={email} onChange={setEmail} placeholder="tucorreo@ejemplo.com" autoComplete="email" />
-              <Field id="login-input-password" label="Contraseña" icon={<Lock className="w-4 h-4" />} type="password"
+              <Field id="login-input-email" label={tr('Correo electrónico', 'Email')} icon={<Mail className="w-4 h-4" />} type="email"
+                value={email} onChange={setEmail} placeholder={tr('tucorreo@ejemplo.com', 'you@example.com')} autoComplete="email" />
+              <Field id="login-input-password" label={tr('Contraseña', 'Password')} icon={<Lock className="w-4 h-4" />} type="password"
                 value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" />
               <div className="text-right">
                 <button type="button" onClick={() => switchMode('forgot')} className="text-[11px] font-semibold text-blue-900 hover:underline">
-                  ¿Olvidaste tu contraseña?
+                  {tr('¿Olvidaste tu contraseña?', 'Forgot your password?')}
                 </button>
               </div>
-              {submitButton('Entrar a mi cuenta')}
+              {submitButton(tr('Entrar a mi cuenta', 'Sign in'))}
             </form>
           )}
 
           {mode === 'register' && (
             <form onSubmit={handleRegister} className="space-y-3.5">
-              <Field id="register-input-name" label="Nombre completo" icon={<UserIcon className="w-4 h-4" />} type="text"
-                value={name} onChange={setName} placeholder="Ej. Laura Gómez" autoComplete="name" />
-              <Field id="register-input-email" label="Correo electrónico" icon={<Mail className="w-4 h-4" />} type="email"
-                value={email} onChange={setEmail} placeholder="laura@ejemplo.com" autoComplete="email" />
-              <Field id="register-input-password" label="Contraseña (mínimo 8 caracteres)" icon={<Lock className="w-4 h-4" />}
+              <Field id="register-input-name" label={tr('Nombre completo', 'Full name')} icon={<UserIcon className="w-4 h-4" />} type="text"
+                value={name} onChange={setName} placeholder={tr('Ej. Laura Gómez', 'e.g. Jane Smith')} autoComplete="name" />
+              <Field id="register-input-email" label={tr('Correo electrónico', 'Email')} icon={<Mail className="w-4 h-4" />} type="email"
+                value={email} onChange={setEmail} placeholder={tr('laura@ejemplo.com', 'jane@example.com')} autoComplete="email" />
+              <Field id="register-input-password" label={tr('Contraseña (mínimo 8 caracteres)', 'Password (at least 8 characters)')} icon={<Lock className="w-4 h-4" />}
                 type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="new-password" minLength={8} />
-              {submitButton('Crear mi cuenta', 'amber')}
+              {submitButton(tr('Crear mi cuenta', 'Create my account'), 'amber')}
             </form>
           )}
 
           {mode === 'forgot' && (
             <form onSubmit={handleForgot} className="space-y-3.5">
-              <p className="text-xs text-slate-600">Escribe tu correo y te enviaremos un enlace para crear una nueva contraseña.</p>
-              <Field id="forgot-input-email" label="Correo electrónico" icon={<Mail className="w-4 h-4" />} type="email"
-                value={email} onChange={setEmail} placeholder="tucorreo@ejemplo.com" autoComplete="email" />
-              {submitButton('Enviar enlace')}
+              <p className="text-xs text-slate-600">{tr('Escribe tu correo y te enviaremos un enlace para crear una nueva contraseña.', 'Enter your email and we\'ll send you a link to set a new password.')}</p>
+              <Field id="forgot-input-email" label={tr('Correo electrónico', 'Email')} icon={<Mail className="w-4 h-4" />} type="email"
+                value={email} onChange={setEmail} placeholder={tr('tucorreo@ejemplo.com', 'you@example.com')} autoComplete="email" />
+              {submitButton(tr('Enviar enlace', 'Send link'))}
               <button type="button" onClick={() => switchMode('login')} className="w-full text-[11px] font-semibold text-blue-900 hover:underline">
-                Volver a iniciar sesión
+                {tr('Volver a iniciar sesión', 'Back to sign in')}
               </button>
             </form>
           )}
 
           {mode === 'update-password' && (
             <form onSubmit={handleUpdatePassword} className="space-y-3.5">
-              <p className="text-xs text-slate-600">Elige tu nueva contraseña.</p>
-              <Field id="new-password" label="Nueva contraseña (mínimo 8 caracteres)" icon={<Lock className="w-4 h-4" />}
+              <p className="text-xs text-slate-600">{tr('Elige tu nueva contraseña.', 'Choose your new password.')}</p>
+              <Field id="new-password" label={tr('Nueva contraseña (mínimo 8 caracteres)', 'New password (at least 8 characters)')} icon={<Lock className="w-4 h-4" />}
                 type="password" value={password} onChange={setPassword} autoComplete="new-password" minLength={8} />
-              <Field id="new-password-2" label="Repite la contraseña" icon={<Lock className="w-4 h-4" />}
+              <Field id="new-password-2" label={tr('Repite la contraseña', 'Confirm password')} icon={<Lock className="w-4 h-4" />}
                 type="password" value={password2} onChange={setPassword2} autoComplete="new-password" minLength={8} />
-              {submitButton('Guardar contraseña')}
+              {submitButton(tr('Guardar contraseña', 'Save password'))}
             </form>
           )}
 
           <div className="pt-2 text-center">
             <span className="text-[11px] text-slate-400 flex items-center justify-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              Tu contraseña se guarda cifrada y nunca se muestra a nadie.
+              {tr('Tu contraseña se guarda cifrada y nunca se muestra a nadie.', 'Your password is stored encrypted and never shown to anyone.')}
             </span>
           </div>
         </div>
