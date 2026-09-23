@@ -10,10 +10,11 @@ import {
   Check, 
   Plus, 
   Minus,
-  Heart
+  Heart,
+  Banknote
 } from 'lucide-react';
 import { Product } from '../types';
-import { RETURN_DAYS } from '../config';
+import { RETURN_DAYS, DELIVERY_ESTIMATE } from '../config';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -93,8 +94,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           {/* Image Column */}
           <div className="relative bg-slate-50 flex items-center justify-center p-6 border-b md:border-b-0 md:border-r border-slate-200">
             {discountPercent > 0 && (
-              <span className="absolute top-4 left-4 z-10 bg-amber-500 text-blue-950 font-black text-xs px-2.5 py-1 rounded-full shadow-md">
-                -{discountPercent}% BENEFICIO
+              <span className="absolute top-4 left-4 z-10 bg-red-600 text-white font-bold text-xs px-2.5 py-1 rounded-md shadow-md">
+                -{discountPercent}%
               </span>
             )}
             <img
@@ -109,14 +110,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           <div className="p-6 md:p-8 flex flex-col justify-between space-y-5">
             <div>
               {/* Category & Flash Deal */}
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex flex-wrap items-center gap-2 mb-2 pr-24">
                 <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">
                   {product.category}
                 </span>
                 {product.isFlashDeal && (
                   <span className="bg-blue-950 text-amber-400 border border-amber-500/40 font-black text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 uppercase">
                     <Zap className="w-3 h-3 fill-current text-amber-400" />
-                    Venta Preferencial
+                    Oferta de la semana
                   </span>
                 )}
               </div>
@@ -143,7 +144,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </>
                 )}
                 <span className={`text-xs font-semibold ${product.stock > 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                  {product.stock > 0 ? `Disponible: ${product.stock}` : 'Agotado'}
+                  {product.stock <= 0 ? 'Agotado' : product.stock <= 5 ? `Quedan solo ${product.stock}` : 'En existencia'}
                 </span>
               </div>
 
@@ -157,9 +158,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     ${product.originalPrice.toFixed(2)}
                   </span>
                 )}
-                <span className="text-xs font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md ml-auto">
-                  Ahorras ${(product.originalPrice - product.price).toFixed(2)}
-                </span>
+                {product.originalPrice > product.price && (
+                  <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md ml-auto whitespace-nowrap">
+                    Ahorras ${(product.originalPrice - product.price).toFixed(2)}
+                  </span>
+                )}
               </div>
 
               {/* Description */}
@@ -206,12 +209,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   {isAdded ? (
                     <>
                       <Check className="w-4 h-4 stroke-[3]" />
-                      <span>¡Añadido a la Bolsa!</span>
+                      <span>Añadido a tu bolsa</span>
                     </>
                   ) : (
                     <>
                       <ShoppingBag className="w-4 h-4" />
-                      <span>Añadir a la Bolsa</span>
+                      <span>Añadir a la bolsa</span>
                     </>
                   )}
                 </button>
@@ -223,25 +226,29 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   className="py-3 px-4 rounded-xl font-black text-xs sm:text-sm bg-amber-500 hover:bg-amber-400 text-blue-950 flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-95 transition-all"
                 >
                   <Zap className="w-4 h-4 fill-current text-blue-950" />
-                  <span>Comprar Ahora</span>
+                  <span>Comprar ahora</span>
                 </button>
               </div>
 
-              {/* Micro Guarantees */}
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500 font-medium">
-                <div className="flex items-center gap-1">
-                  <Truck className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Envío a domicilio</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Devoluciones {RETURN_DAYS} días</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Pago seguro</span>
-                </div>
-              </div>
+              {/* Garantías de compra */}
+              <ul className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2.5 text-xs text-slate-600">
+                <li className="flex items-start gap-2.5">
+                  <Truck className="w-4 h-4 text-blue-900 flex-shrink-0 mt-px" />
+                  <span><strong className="text-slate-900 font-semibold">Entrega en {DELIVERY_ESTIMATE}</strong> directo a tu domicilio.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <Banknote className="w-4 h-4 text-blue-900 flex-shrink-0 mt-px" />
+                  <span><strong className="text-slate-900 font-semibold">Paga al recibir</strong> en efectivo, o con tarjeta, Zelle o Cash App.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <RotateCcw className="w-4 h-4 text-blue-900 flex-shrink-0 mt-px" />
+                  <span><strong className="text-slate-900 font-semibold">{RETURN_DAYS} días para devolverlo</strong> si no es lo que esperabas.</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-blue-900 flex-shrink-0 mt-px" />
+                  <span><strong className="text-slate-900 font-semibold">Pago protegido:</strong> nunca guardamos los datos de tu tarjeta.</span>
+                </li>
+              </ul>
 
             </div>
 

@@ -19,8 +19,12 @@ import {
   Activity,
   Glasses,
   Crown,
-  Heart
+  Heart,
+  Truck,
+  RotateCcw,
+  MessageCircle
 } from 'lucide-react';
+import { CONTACT_WHATSAPP, RETURN_DAYS, formatMoneyShort } from '../config';
 import { User, CartItem } from '../types';
 
 interface NavbarProps {
@@ -36,6 +40,7 @@ interface NavbarProps {
   onOpenOrders: () => void;
   onLogout: () => void;
   onSelectCategory: (category: string) => void;
+  freeShippingThreshold: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -51,6 +56,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenOrders,
   onLogout,
   onSelectCategory,
+  freeShippingThreshold,
 }) => {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -71,23 +77,33 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-white shadow-xs border-b border-slate-200">
-      {/* Top promotional bar: Azul Profundo & Acentos Dorados */}
-      <div className="bg-blue-950 text-white text-xs py-1.5 px-3 sm:px-4 font-medium border-b border-blue-900">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      {/* Barra superior: beneficios reales de la tienda */}
+      <div className="bg-blue-950 text-blue-100 text-[11px] sm:text-xs py-2 px-3 sm:px-4 font-medium">
+        <div className="max-w-7xl mx-auto flex items-center justify-center md:justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="bg-amber-500 text-blue-950 px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider flex items-center gap-1">
-              <Crown className="w-3 h-3 text-blue-950 fill-current" /> Selección Premium
+            <Truck className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+            <span>
+              <strong className="text-white font-semibold">Envío gratis</strong> en pedidos desde {formatMoneyShort(freeShippingThreshold)}
+              <span className="hidden sm:inline"> · Paga con tarjeta, Zelle, Cash App o efectivo al recibir</span>
             </span>
-            <span className="hidden sm:inline text-blue-100">Envío gratis en pedidos desde US$25 · Tarjeta, Zelle, Cash App o efectivo</span>
-            <span className="sm:hidden text-[11px] text-blue-100">Envío gratis desde US$25</span>
           </div>
-          <div className="flex items-center gap-4 text-[11px]">
-            <span className="hidden md:inline bg-blue-900/80 px-2.5 py-0.5 rounded border border-blue-800 text-blue-200">
-              Cupón 10% OFF: <strong className="text-amber-400">TEMASHOP10</strong>
+          <div className="hidden md:flex items-center gap-5 text-blue-200">
+            <span className="flex items-center gap-1.5">
+              <RotateCcw className="w-3.5 h-3.5 text-amber-400" /> Devoluciones en {RETURN_DAYS} días
             </span>
-            <span className="flex items-center gap-1 text-blue-200">
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" /> Pago seguro
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" /> Compra protegida
             </span>
+            {CONTACT_WHATSAPP && (
+              <a
+                href={`https://wa.me/${CONTACT_WHATSAPP.replace(/\D/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-white hover:text-amber-300 font-semibold"
+              >
+                <MessageCircle className="w-3.5 h-3.5 text-emerald-400" /> ¿Dudas? Escríbenos
+              </a>
+            )}
           </div>
         </div>
       </div>
@@ -112,20 +128,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => onSelectCategory('Todas')} 
             className="flex items-center gap-2.5 cursor-pointer select-none group flex-shrink-0"
           >
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-blue-950 via-blue-900 to-blue-800 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-md shadow-blue-950/20 group-hover:scale-105 transition-transform">
+            <div className="hidden sm:flex w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-tr from-blue-950 via-blue-900 to-blue-800 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-md shadow-blue-950/20 group-hover:scale-105 transition-transform">
               <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xl sm:text-3xl font-black tracking-tight text-blue-950 font-sans">
+                <span className="text-xl sm:text-[26px] font-extrabold tracking-tight text-blue-950">
                   Tema<span className="text-amber-500">Shop</span>
                 </span>
-                <span className="bg-blue-100 text-blue-900 border border-blue-200 text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded uppercase">
-                  ELITE
-                </span>
               </div>
-              <p className="text-[10px] text-gray-400 font-medium hidden sm:block -mt-1">
-                Tienda en línea
+              <p className="text-[10px] text-slate-500 font-medium hidden sm:block -mt-0.5 tracking-wide">
+                Compra fácil · Recibe en casa
               </p>
             </div>
           </div>
@@ -140,7 +153,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <input
                   id="search-input"
                   type="text"
-                  placeholder="Buscar en el catálogo departamental..."
+                  placeholder="Buscar productos"
                   value={searchQuery}
                   onChange={(e) => onSearchChange(e.target.value)}
                   className="w-full py-1.5 sm:py-2.5 px-2.5 sm:px-3 text-xs sm:text-sm text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent"
@@ -221,7 +234,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                             currentUser.role === 'admin' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-blue-100 text-blue-900'
                           }`}>
-                            {currentUser.role === 'admin' ? '🛡️ Administrador Oficial' : '🛍️ Cliente'}
+                            {currentUser.role === 'admin' ? 'Administrador' : 'Cliente'}
                           </span>
                         </div>
 
@@ -291,7 +304,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   id="auth-open-button"
                   onClick={onOpenAuth}
-                  className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-blue-950 hover:text-amber-600 hover:bg-blue-50 font-bold text-xs transition-colors border border-blue-900/30"
+                  className="hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-blue-950 hover:text-amber-600 hover:bg-blue-50 font-bold text-xs transition-colors border border-blue-900/30"
                 >
                   <UserIcon className="w-4 h-4 text-blue-900" />
                   <span className="hidden sm:inline">Ingresar</span>
@@ -303,7 +316,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="wishlist-trigger-button"
               onClick={onOpenWishlist}
-              className="relative flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl text-blue-950 hover:text-rose-600 hover:bg-rose-50/80 transition-all border border-slate-200 hover:border-rose-200 active:scale-95 bg-white shadow-2xs"
+              className="relative hidden sm:flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl text-blue-950 hover:text-rose-600 hover:bg-rose-50/80 transition-all border border-slate-200 hover:border-rose-200 active:scale-95 bg-white shadow-2xs"
               title="Mi Lista de Deseos (Favoritos)"
               aria-label="Abrir lista de deseos"
             >

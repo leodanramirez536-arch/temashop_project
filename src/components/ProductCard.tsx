@@ -42,23 +42,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     <div 
       id={`product-card-${product.id}`}
       onClick={() => onOpenQuickView(product)}
-      className="group relative bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-xs hover:shadow-2xl hover:shadow-blue-950/10 hover:border-blue-900/30 transition-all duration-300 ease-out flex flex-col cursor-pointer transform hover:-translate-y-1.5 hover:scale-[1.02] will-change-transform"
+      className="group relative bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-blue-950/10 hover:border-slate-300 transition-all duration-300 ease-out flex flex-col cursor-pointer"
     >
       {/* Badges Overlay */}
-      <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1.5 items-start pointer-events-none transition-transform duration-300 ease-out group-hover:scale-105 group-hover:translate-x-0.5">
+      <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1.5 items-start pointer-events-none">
         {discountPercent > 0 && (
-          <span className="bg-amber-500 text-blue-950 font-black text-[11px] px-2 py-0.5 rounded-full shadow-xs flex items-center gap-0.5 transition-all duration-200">
+          <span className="bg-red-600 text-white font-bold text-[11px] px-2 py-0.5 rounded-md shadow-xs">
             -{discountPercent}%
           </span>
         )}
         {product.isFlashDeal && (
-          <span className="bg-blue-950 text-amber-400 border border-amber-500/40 font-black text-[10px] px-2 py-0.5 rounded-full shadow-xs flex items-center gap-0.5 uppercase tracking-wide transition-all duration-200">
-            <Zap className="w-3 h-3 fill-current text-amber-400" />
-            VIP
+          <span className="bg-amber-400 text-blue-950 font-bold text-[10px] px-2 py-0.5 rounded-md shadow-xs flex items-center gap-0.5 uppercase tracking-wide">
+            <Zap className="w-3 h-3 fill-current" />
+            Oferta
           </span>
         )}
-        {product.badge && !product.isFlashDeal && (
-          <span className="bg-slate-900/85 backdrop-blur-xs text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
+        {product.badge && !(product.isFlashDeal && /^oferta/i.test(product.badge.trim())) && (
+          <span className="bg-blue-950/90 text-white text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-xs uppercase tracking-wide">
             {product.badge}
           </span>
         )}
@@ -105,24 +105,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           src={imageError ? fallbackImage : product.imageUrl}
           alt={product.title}
           onError={() => setImageError(true)}
-          className="absolute inset-0 w-full h-full object-cover object-center transition-all duration-700 ease-out group-hover:scale-110 group-hover:brightness-[1.03]"
+          className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
           loading="lazy"
         />
-        {/* Subtle hover gradient sheen */}
-        <div className="absolute inset-0 bg-gradient-to-t from-blue-950/20 via-transparent to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-        <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-slate-900/10 to-transparent pointer-events-none" />
       </div>
 
       {/* Card Content */}
       <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between">
         <div>
           {/* Category */}
-          <span className="text-[11px] font-bold text-amber-600 tracking-wide uppercase transition-colors duration-200 group-hover:text-amber-700">
+          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 tracking-wide uppercase">
             {product.category}
           </span>
 
           {/* Product Title */}
-          <h3 className="text-xs sm:text-sm font-semibold text-slate-900 line-clamp-2 mt-1 leading-snug group-hover:text-blue-900 transition-colors duration-200">
+          <h3 className="text-[13px] sm:text-sm font-semibold text-slate-900 line-clamp-2 mt-1 leading-snug min-h-[2.5em] group-hover:text-blue-900 transition-colors duration-200">
             {product.title}
           </h3>
 
@@ -145,7 +142,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         {/* Pricing & Stock Section */}
         <div className="mt-3 pt-2.5 border-t border-slate-100">
           <div className="flex items-baseline gap-2">
-            <span className="text-lg sm:text-xl font-black text-blue-950 group-hover:text-blue-900 transition-colors duration-200">
+            <span className="text-lg sm:text-xl font-extrabold text-blue-950">
               ${product.price.toFixed(2)}
             </span>
             {product.originalPrice > product.price && (
@@ -155,11 +152,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             )}
           </div>
 
+          {product.originalPrice > product.price && (
+            <p className="text-[11px] font-semibold text-emerald-700 mt-0.5">
+              Ahorras ${(product.originalPrice - product.price).toFixed(2)}
+            </p>
+          )}
+
           {/* Low Stock Warning */}
           {product.stock <= 5 && product.stock > 0 && (
             <p className="text-[10px] text-amber-700 font-bold mt-1 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping inline-block" />
-              ¡Solo quedan {product.stock}!
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+              Quedan solo {product.stock}
             </p>
           )}
 
@@ -173,20 +176,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 ? 'bg-emerald-700 text-white shadow-emerald-500/20'
                 : product.stock <= 0
                 ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                : 'bg-blue-900 hover:bg-blue-800 text-amber-400 shadow-blue-950/20 hover:shadow-md hover:scale-[1.02] border border-amber-500/20'
+                : 'bg-blue-950 hover:bg-blue-900 text-white'
             }`}
           >
             {isAdded ? (
               <>
                 <Check className="w-4 h-4 stroke-[2.5]" />
-                <span className="text-white">¡Añadido a la Bolsa!</span>
+                <span className="text-white">Añadido</span>
               </>
             ) : product.stock <= 0 ? (
               <span>Agotado</span>
             ) : (
               <>
                 <ShoppingBag className="w-4 h-4 stroke-[2.2] transition-transform duration-200 group-hover/btn:-translate-y-0.5" />
-                <span>Añadir a la Bolsa</span>
+                <span><span className="sm:hidden">Añadir</span><span className="hidden sm:inline">Añadir a la bolsa</span></span>
               </>
             )}
           </button>
