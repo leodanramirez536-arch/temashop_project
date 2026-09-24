@@ -35,6 +35,18 @@ export const DOP_RATE: number = Number(env.VITE_DOP_RATE || 0);
 export const formatDOP = (usd: number) =>
   `RD$${(Math.ceil((Number(usd) || 0) * DOP_RATE * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+// Precio anterior tachado, "Ahorras" y "-%": apagado por defecto.
+// Actívalo (VITE_SHOW_COMPARE_PRICES=true) solo si el producto de verdad se vendió a ese precio anterior.
+// En EE. UU. (FTC) mostrar un "antes" inventado se considera publicidad engañosa.
+export const SHOW_COMPARE_PRICES: boolean = String(env.VITE_SHOW_COMPARE_PRICES || '').toLowerCase() === 'true';
+// Contador de "vendidos" en los productos: apagado por defecto (VITE_SHOW_SALES_COUNT=true para mostrarlo).
+export const SHOW_SALES_COUNT: boolean = String(env.VITE_SHOW_SALES_COUNT || '').toLowerCase() === 'true';
+// ¿Este producto tiene un precio anterior que se puede mostrar?
+export const hasComparePrice = (p: { price: number; originalPrice: number }) =>
+  SHOW_COMPARE_PRICES && Number(p.originalPrice) > Number(p.price);
+export const discountPercentOf = (p: { price: number; originalPrice: number }) =>
+  hasComparePrice(p) ? Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100) : 0;
+
 // Días para solicitar una devolución (debe coincidir con tu política real)
 export const RETURN_DAYS = Number(env.VITE_RETURN_DAYS || 7);
 
