@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Star, ShoppingBag, Check, Zap, Eye, Heart } from 'lucide-react';
 import { Product } from '../types';
-import { SHOW_SALES_COUNT, hasComparePrice, discountPercentOf } from '../config';
+import { SHOW_SALES_COUNT, hasComparePrice, discountPercentOf, showDealBadge, visibleBadge } from '../config';
 import { useLang, useProductText } from '../i18n';
 
 interface ProductCardProps {
@@ -53,15 +53,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             -{discountPercent}%
           </span>
         )}
-        {product.isFlashDeal && (
+        {showDealBadge(product) && (
           <span className="bg-amber-400 text-blue-950 font-bold text-[10px] px-2 py-0.5 rounded-md shadow-xs flex items-center gap-0.5 uppercase tracking-wide">
             <Zap className="w-3 h-3 fill-current" />
             {tr('Oferta', 'Deal')}
           </span>
         )}
-        {product.badge && !(product.isFlashDeal && /^oferta/i.test(product.badge.trim())) && (
+        {visibleBadge(product.badge) && (
           <span className="bg-blue-950/90 text-white text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-xs uppercase tracking-wide">
-            {badge(product.badge)}
+            {badge(visibleBadge(product.badge))}
           </span>
         )}
       </div>
