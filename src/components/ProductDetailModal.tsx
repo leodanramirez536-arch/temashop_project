@@ -16,7 +16,7 @@ import {
   Link2
 } from 'lucide-react';
 import { Product } from '../types';
-import { RETURN_DAYS, SHOW_SALES_COUNT, hasComparePrice, discountPercentOf } from '../config';
+import { RETURN_DAYS, SHOW_SALES_COUNT, hasComparePrice, discountPercentOf, showDealBadge } from '../config';
 import { useLang, useProductText } from '../i18n';
 
 interface ProductDetailModalProps {
@@ -162,7 +162,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">
                   {cat(product.category)}
                 </span>
-                {product.isFlashDeal && (
+                {showDealBadge(product) && (
                   <span className="bg-blue-950 text-amber-400 border border-amber-500/40 font-black text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 uppercase">
                     <Zap className="w-3 h-3 fill-current text-amber-400" />
                     {tr('Oferta de la semana', 'This week\'s deal')}
