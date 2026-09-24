@@ -38,7 +38,7 @@ import {
   deleteReview,
   Review,
 } from '../lib/api';
-import { formatMoney } from '../config';
+import { formatMoney, SHOW_COMPARE_PRICES } from '../config';
 
 interface AdminPanelProps {
   isOpen: boolean;
@@ -774,6 +774,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         onChange={(e) => setOriginalPrice(e.target.value)}
                         className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-500 focus:ring-2 focus:ring-blue-900 focus:outline-none"
                       />
+                      {!SHOW_COMPARE_PRICES && (
+                        <p className="text-[10px] text-amber-700 mt-1 leading-snug">
+                          Oculto en la tienda. Usa solo un precio al que de verdad vendiste el producto; para mostrarlo activa VITE_SHOW_COMPARE_PRICES=true en Vercel.
+                        </p>
+                      )}
                     </div>
 
                     {/* Live Automatic Calculation Badge */}
