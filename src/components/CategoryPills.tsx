@@ -59,7 +59,7 @@ export const CategoryPills: React.FC<CategoryPillsProps> = ({
         
         {/* Horizontal Category Pills */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-          {CATEGORIES_LIST.map((category) => {
+          {CATEGORIES_LIST.filter((c) => SHOW_COMPARE_PRICES || c !== 'Ofertas Flash').map((category) => {
             const isSelected = selectedCategory === category;
             return (
               <button
