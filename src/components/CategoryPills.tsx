@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { CATEGORIES_LIST } from '../data/initialProducts';
 import { useLang } from '../i18n';
+import { SHOW_COMPARE_PRICES } from '../config';
 
 interface CategoryPillsProps {
   selectedCategory: string;
@@ -95,7 +96,7 @@ export const CategoryPills: React.FC<CategoryPillsProps> = ({
               <option value="featured">{tr('Más recientes', 'Newest')}</option>
               <option value="price_low">{tr('Precio: menor a mayor', 'Price: low to high')}</option>
               <option value="price_high">{tr('Precio: mayor a menor', 'Price: high to low')}</option>
-              <option value="discount">{tr('Mayor descuento', 'Biggest discount')}</option>
+              {SHOW_COMPARE_PRICES && <option value="discount">{tr('Mayor descuento', 'Biggest discount')}</option>}
               <option value="sales">{tr('Más vendidos', 'Best sellers')}</option>
               <option value="rating">{tr('Mejor calificados', 'Top rated')}</option>
             </select>
