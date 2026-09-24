@@ -44,6 +44,16 @@ export const SHOW_SALES_COUNT: boolean = String(env.VITE_SHOW_SALES_COUNT || '')
 // ¿Este producto tiene un precio anterior que se puede mostrar?
 export const hasComparePrice = (p: { price: number; originalPrice: number }) =>
   SHOW_COMPARE_PRICES && Number(p.originalPrice) > Number(p.price);
+// "Oferta": solo cuando hay un descuento real que mostrar.
+export const showDealBadge = (p: { price: number; originalPrice: number; isFlashDeal?: boolean }) =>
+  !!p.isFlashDeal && hasComparePrice(p);
+// Etiquetas que dicen que un producto es de los más vendidos: solo si se muestran las ventas reales.
+const POPULARITY_BADGE = /^(m[aá]s vendidos?|best ?sellers?|top( ventas| sellers?)?|popular|oferta|deal)$/i;
+export const visibleBadge = (b?: string | null) => {
+  const t = (b || '').trim();
+  if (!t) return '';
+  return !SHOW_SALES_COUNT && POPULARITY_BADGE.test(t) ? '' : t;
+};
 export const discountPercentOf = (p: { price: number; originalPrice: number }) =>
   hasComparePrice(p) ? Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100) : 0;
 
