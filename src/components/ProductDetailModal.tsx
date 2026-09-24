@@ -16,7 +16,7 @@ import {
   Link2
 } from 'lucide-react';
 import { Product } from '../types';
-import { RETURN_DAYS } from '../config';
+import { RETURN_DAYS, SHOW_SALES_COUNT, hasComparePrice, discountPercentOf } from '../config';
 import { useLang, useProductText } from '../i18n';
 
 interface ProductDetailModalProps {
@@ -79,9 +79,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     }
   };
 
-  const discountPercent = Math.round(
-    ((product.originalPrice - product.price) / product.originalPrice) * 100
-  );
+  const discountPercent = discountPercentOf(product);
 
   const fallbackImage = 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=800&q=80';
 
@@ -187,7 +185,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     <span className="text-slate-300">•</span>
                   </>
                 )}
-                {(product.salesCount || 0) > 0 && (
+                {SHOW_SALES_COUNT && (product.salesCount || 0) > 0 && (
                   <>
                     <span className="text-xs text-slate-500">{product.salesCount} {tr(product.salesCount === 1 ? 'vendido' : 'vendidos', 'sold')}</span>
                     <span className="text-slate-300">•</span>
@@ -203,12 +201,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <span className="text-2xl sm:text-3xl font-black text-blue-950">
                   ${product.price.toFixed(2)}
                 </span>
-                {product.originalPrice > product.price && (
+                {hasComparePrice(product) && (
                   <span className="text-sm text-slate-400 line-through">
                     ${product.originalPrice.toFixed(2)}
                   </span>
                 )}
-                {product.originalPrice > product.price && (
+                {hasComparePrice(product) && (
                   <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md ml-auto whitespace-nowrap">
                     {tr('Ahorras', 'You save')} ${(product.originalPrice - product.price).toFixed(2)}
                   </span>
