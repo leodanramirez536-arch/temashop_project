@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Truck, RotateCcw, ShieldCheck, Tag, ArrowRight, Copy, Check, Banknote } from 'lucide-react';
-import { RETURN_DAYS, formatMoneyShort } from '../config';
+import { RETURN_DAYS, formatMoneyShort, SHOW_COMPARE_PRICES } from '../config';
 import { useLang } from '../i18n';
 
 interface FlashDealBannerProps {
@@ -60,6 +60,7 @@ export const FlashDealBanner: React.FC<FlashDealBannerProps> = ({ onExploreDeals
                 {tr('Comprar ahora', 'Shop now')}
                 <ArrowRight className="w-4 h-4" />
               </button>
+              {SHOW_COMPARE_PRICES && (
               <button
                 id="banner-explore-deals-button"
                 onClick={onExploreDeals}
@@ -67,6 +68,7 @@ export const FlashDealBanner: React.FC<FlashDealBannerProps> = ({ onExploreDeals
               >
                 {tr('Ver ofertas de la semana', 'See this week\'s deals')}
               </button>
+              )}
             </div>
 
             <ul className="hidden sm:flex sm:flex-wrap justify-center lg:justify-start gap-x-6 gap-y-3 pt-3 text-xs sm:text-[13px] text-blue-100 text-left">
