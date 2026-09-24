@@ -11,6 +11,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Product } from '../types';
+import { hasComparePrice, discountPercentOf } from '../config';
 import { useLang, useProductText } from '../i18n';
 
 interface WishlistModalProps {
@@ -140,9 +141,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
               {/* Items List */}
               <div className="space-y-3">
                 {wishlistProducts.map((product) => {
-                  const discountPercent = Math.round(
-                    ((product.originalPrice - product.price) / product.originalPrice) * 100
-                  );
+                  const discountPercent = discountPercentOf(product);
 
                   return (
                     <div
@@ -190,7 +189,7 @@ export const WishlistModal: React.FC<WishlistModalProps> = ({
                           <span className="text-sm sm:text-base font-black text-blue-950">
                             ${product.price.toFixed(2)}
                           </span>
-                          {product.originalPrice > product.price && (
+                          {hasComparePrice(product) && (
                             <span className="text-xs text-slate-400 line-through">
                               ${product.originalPrice.toFixed(2)}
                             </span>
