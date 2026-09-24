@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Star, ShoppingBag, Check, Zap, Eye, Heart } from 'lucide-react';
 import { Product } from '../types';
+import { SHOW_SALES_COUNT, hasComparePrice, discountPercentOf } from '../config';
 import { useLang, useProductText } from '../i18n';
 
 interface ProductCardProps {
@@ -23,9 +24,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [isAdded, setIsAdded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
-  const discountPercent = Math.round(
-    ((product.originalPrice - product.price) / product.originalPrice) * 100
-  );
+  const discountPercent = discountPercentOf(product);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -127,7 +126,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </h3>
 
           {/* Calificaciones y ventas reales (solo si existen) */}
-          {(product.reviewsCount > 0 || (product.salesCount || 0) > 0) && (
+          {(product.reviewsCount > 0 || (SHOW_SALES_COUNT && (product.salesCount || 0) > 0)) && (
             <div className="flex items-center gap-1.5 mt-1.5 text-xs">
               {product.reviewsCount > 0 && (
                 <div className="flex items-center text-amber-500">
@@ -135,7 +134,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   <span className="ml-1 font-bold text-slate-900 text-xs">{product.rating.toFixed(1)}</span>
                 </div>
               )}
-              {(product.salesCount || 0) > 0 && (
+              {SHOW_SALES_COUNT && (product.salesCount || 0) > 0 && (
                 <span className="text-[11px] text-slate-500">{product.salesCount} {tr(product.salesCount === 1 ? 'vendido' : 'vendidos', 'sold')}</span>
               )}
             </div>
@@ -148,14 +147,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <span className="text-lg sm:text-xl font-extrabold text-blue-950">
               ${product.price.toFixed(2)}
             </span>
-            {product.originalPrice > product.price && (
+            {hasComparePrice(product) && (
               <span className="text-xs text-slate-400 line-through font-medium">
                 ${product.originalPrice.toFixed(2)}
               </span>
             )}
           </div>
 
-          {product.originalPrice > product.price && (
+          {hasComparePrice(product) && (
             <p className="text-[11px] font-semibold text-emerald-700 mt-0.5">
               {tr('Ahorras', 'You save')} ${(product.originalPrice - product.price).toFixed(2)}
             </p>
